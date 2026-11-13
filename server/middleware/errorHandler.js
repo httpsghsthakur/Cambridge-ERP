@@ -28,7 +28,7 @@ const errorHandler = (err, req, res, next) => {
     return res.status(401).json({ message: 'Token expired. Please log in again.' });
   }
 
-  // (M10) In production, never leak internal error messages
+  // (M10) In production, sanitize 500 error messages
   const statusCode = err.status || 500;
   const message = isProd && statusCode === 500
     ? 'An unexpected error occurred.'

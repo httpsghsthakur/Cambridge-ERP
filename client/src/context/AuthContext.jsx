@@ -135,6 +135,9 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const { data } = await API.post('/auth/login', { email, password });
+    if (data.token) {
+      localStorage.setItem('token', data.token);
+    }
     setUser(data.user);
     return data.user;
   };
@@ -146,6 +149,7 @@ export function AuthProvider({ children }) {
     } catch (err) {
       console.error('Logout error:', err);
     }
+    localStorage.removeItem('token');
     setUser(null);
   };
 

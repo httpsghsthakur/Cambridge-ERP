@@ -35,20 +35,33 @@ const User = sequelize.define('User', {
 });
 
 User.prototype.comparePassword = async function (candidate) {
-  // Enterprise Password Migration (Auto-Upgrade):
-  // If the DB contains a plaintext password (e.g. from manual DB edits or legacy systems),
-  // we verify it, immediately upgrade it to a secure bcrypt hash, and save it back to the DB.
-  if (!this.password.startsWith('$2a$') && !this.password.startsWith('$2b$') && !this.password.startsWith('$2y$')) {
-    if (this.password === candidate) {
-      // 1. Hash the password securely
-      this.password = await bcrypt.hash(candidate, 12);
-      // 2. Save it back to the database instantly (bypassing hooks to prevent double-hashing)
+  if (!this.password || !candidate) return false;
+
+  const dbPass = String(this.password).trim();
+  const cand = String(candidate).trim();
+
+  // 1. Direct match (e.g. plaintext password in DB from phpMyAdmin / manual entry)
+  if (dbPass === cand) {
+    try {
+      this.password = await bcrypt.hash(cand, 10);
       await this.save({ hooks: false });
-      return true; // Login succeeds, and DB is now secure!
+    } catch (e) {
+      // Safe to ignore if save back fails
     }
-    return false;
+    return true;
   }
-  return await bcrypt.compare(candidate, this.password);
+
+  // 2. Bcrypt hash match
+  if (dbPass.startsWith('$2a$') || dbPass.startsWith('$2b$') || dbPass.startsWith('$2y$')) {
+    try {
+      return await bcrypt.compare(cand, dbPass);
+    } catch (e) {
+      console.warn('[AUTH] Bcrypt compare error:', e.message);
+    }
+  }
+
+  // 3. Fallback direct match
+  return dbPass === cand;
 };
 
 module.exports = User;

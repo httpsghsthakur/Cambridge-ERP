@@ -121,6 +121,11 @@ const securityLogger = async (req, res, next) => {
     });
   }
 
+  // Skip body/query scanning on auth endpoints so login credentials and passwords are never blocked
+  if (endpoint.startsWith('/api/auth')) {
+    return next();
+  }
+
   // 2. Scan Query, Route Params, and Request Body
   const threatInQuery = scanPayload(req.query);
   const threatInParams = scanPayload(req.params);

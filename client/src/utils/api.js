@@ -13,8 +13,12 @@ const getCookie = (name) => {
   return null;
 };
 
-// Attach CSRF token to every request
+// Attach Auth token and CSRF token to every request
 API.interceptors.request.use(config => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers['Authorization'] = `Bearer ${token}`;
+  }
   const csrfToken = getCookie('csrf-token');
   if (csrfToken) config.headers['X-CSRF-Token'] = csrfToken;
   return config;

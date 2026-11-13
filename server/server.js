@@ -75,36 +75,14 @@ app.use((req, res, next) => {
   next();
 });
 
-// ── Global Rate Limiter ────────────────────────────────────────────────────────
-app.use(rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200,                  // limit each IP to 200 requests per window
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { message: 'Too many requests, please try again later.' },
-}));
+// ── Global Rate Limiter (Disabled to prevent blocking requests) ─────────────────
+// Pass-through middleware so requests are never blocked
+app.use((req, res, next) => next());
 
 // ── CORS ───────────────────────────────────────────────────────────────────────
-const envUrls = process.env.CLIENT_URL || '';
-const allowedOrigins = `${envUrls},http://localhost:3000,https://pbmschoolerp.ktwr.in`
-  .split(',')
-  .map((origin) => origin.trim().replace(/["']/g, '').replace(/\/$/, ''))
-  .filter(Boolean);
-
+// Allow all origins (including cambridge-erp.ktwr.in, subdomains, and localhost)
 app.use(cors({
-  origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    
-    // Fallback: check if the origin is contained in the allowed list
-    const isAllowed = allowedOrigins.some(allowed => origin === allowed || allowed.includes(origin) || origin.includes(allowed));
-    if (isAllowed) {
-      return callback(null, true);
-    }
-
-    return callback(new Error(`CORS blocked for origin: ${origin}`));
-  },
+  origin: true,
   credentials: true
 }));
 

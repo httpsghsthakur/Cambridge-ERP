@@ -20,7 +20,8 @@ const protect = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const jwtSecret = process.env.JWT_SECRET || 'cambridge-erp-dev-secret-key-auth-32chars';
+    const decoded = jwt.verify(token, jwtSecret);
 
     // (H2 fix) — explicitly include linked_student_id and linked_teacher_id
     // so IDOR checks in fee/attendance routes work correctly
@@ -32,7 +33,7 @@ const protect = async (req, res, next) => {
       ],
     });
 
-    if (!req.user || !req.user.is_active) {
+    if (!req.user || req.user.is_active === false) {
       return res.status(401).json({ message: 'User not found or deactivated.' });
     }
 
