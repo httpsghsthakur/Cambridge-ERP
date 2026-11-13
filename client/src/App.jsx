@@ -57,6 +57,7 @@ import MyNotifications from './pages/parent/MyNotifications';
 import MyProfilePage from './pages/common/MyProfilePage';
 import BulkUploadStudents from './pages/common/BulkUploadStudents';
 import MyDocuments from './pages/common/MyDocuments';
+import StudentPerformance from './pages/common/StudentPerformance';
 
 import FCLayout from './pages/feecollector/FCLayout';
 import FCDashboard from './pages/feecollector/FCDashboard';
@@ -84,6 +85,7 @@ export default function App() {
           >
             <Route index element={<Dashboard />} />
             <Route path="students" element={<Students />} />
+            <Route path="student-performance" element={<StudentPerformance />} />
             <Route path="teachers" element={<Staff />} />
             <Route path="incharge" element={<ClassInchargeManager />} />
             <Route path="teacher-attendance" element={<AdminTeacherAttendance />} />
@@ -119,6 +121,7 @@ export default function App() {
             }
           >
             <Route index element={<Admin2Dashboard />} />
+            <Route path="student-performance" element={<StudentPerformance />} />
             <Route path="results" element={<ResultApprovals />} />
             <Route path="datesheets" element={<AdminDatesheets />} />
             <Route path="incharge" element={<ClassInchargeManager />} />
@@ -143,6 +146,7 @@ export default function App() {
             }
           >
             <Route index element={<TeacherDashboard />} />
+            <Route path="student-performance" element={<StudentPerformance />} />
             <Route path="attendance" element={<MarkAttendance />} />
             <Route path="marks" element={<EnterMarks />} />
             <Route path="incharge-results" element={<InchargeResults />} />

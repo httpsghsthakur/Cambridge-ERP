@@ -1,7 +1,8 @@
 const express = require('express');
 const router  = express.Router();
 const { Op }  = require('sequelize');
-const { Student, Session, User, Teacher, ClassIncharge } = require('../models');
+const { Student, Session, User, Teacher, ClassIncharge, Attendance, Result, ResultSubject, StudentAchievement, PromotionHistory, Fee } = require('../models');
+const { buildStudentSessionAttendance } = require('../utils/attendanceSessionHelper');
 
 const { getTeacherAllowedClasses } = require('../utils/teacherAllowedClasses');
 const { protect, hasPermission, isSuperAdmin, authorize } = require('../middleware/auth');
@@ -214,6 +215,395 @@ router.put('/:id/approval', protect, authorize('admin'), validateStudentApproval
     res.json({ message: `Student ${status}.`, student });
   } catch (err) {
     await txn.rollback();
+    res.status(500).json({ message: err.message });
+  }
+});
+
+
+// ── Student Performance Endpoints ──────────────────────────────────────────
+
+// GET /api/students/performance/overview
+router.get('/performance/overview', protect, hasPermission('VIEW_STUDENTS'), async (req, res) => {
+  try {
+    const {
+      class: cls,
+      section,
+      session_id,
+      search,
+      status_filter,
+      page = 1,
+      limit = 50,
+    } = req.query;
+
+    const where = { is_active: true, approval_status: 'approved' };
+    if (section) where.section = section;
+    if (session_id) where.session_id = session_id;
+
+    let allowedClasses = null;
+    if (req.user.role === 'teacher') {
+      allowedClasses = await getTeacherAllowedClasses(req.user.linked_teacher_id);
+      if (!allowedClasses || allowedClasses.length === 0) {
+        return res.json({
+          students: [],
+          stats: { total_students: 0, avg_attendance: 0, avg_marks: 0, top_performers: 0, attention_needed: 0 },
+          allowed_classes: [],
+          pagination: { total: 0, page: 1, limit: parseInt(limit), pages: 0 }
+        });
+      }
+      if (cls) {
+        if (!allowedClasses.includes(cls)) {
+          return res.status(403).json({ message: 'Access denied. You are not assigned to this class.' });
+        }
+        where.class = cls;
+      } else {
+        where.class = { [Op.in]: allowedClasses };
+      }
+    } else if (cls) {
+      where.class = cls;
+    }
+
+    if (search) {
+      where[Op.or] = [
+        { first_name:   { [Op.like]: `%${search}%` } },
+        { last_name:    { [Op.like]: `%${search}%` } },
+        { student_id:   { [Op.like]: `%${search}%` } },
+        { parent_name:  { [Op.like]: `%${search}%` } },
+      ];
+      if (!isNaN(search) && search.trim() !== '') {
+        where[Op.or].push({ roll_number: parseInt(search, 10) });
+      }
+    }
+
+    const students = await Student.findAll({
+      where,
+      include: [{ model: Session, as: 'session', attributes: ['id', 'name'] }],
+      order: [['class', 'ASC'], ['section', 'ASC'], ['roll_number', 'ASC']],
+    });
+
+    if (students.length === 0) {
+      return res.json({
+        students: [],
+        stats: { total_students: 0, avg_attendance: 0, avg_marks: 0, top_performers: 0, attention_needed: 0 },
+        allowed_classes: allowedClasses,
+        pagination: { total: 0, page: 1, limit: parseInt(limit), pages: 0 }
+      });
+    }
+
+    const studentIds = students.map(s => s.id);
+
+    // Fetch attendance for all matching students
+    const attendanceRecords = await Attendance.findAll({
+      where: {
+        student_id: { [Op.in]: studentIds },
+        ...(session_id ? { session_id } : {})
+      },
+      attributes: ['student_id', 'status']
+    });
+
+    const attMap = {};
+    attendanceRecords.forEach(a => {
+      if (!attMap[a.student_id]) {
+        attMap[a.student_id] = { total: 0, present: 0, absent: 0, late: 0 };
+      }
+      if (a.status !== 'holiday') {
+        attMap[a.student_id].total++;
+        if (a.status === 'present') attMap[a.student_id].present++;
+        else if (a.status === 'absent') attMap[a.student_id].absent++;
+        else if (a.status === 'late') attMap[a.student_id].late++;
+      }
+    });
+
+    // Fetch results
+    const results = await Result.findAll({
+      where: {
+        student_id: { [Op.in]: studentIds },
+        ...(session_id ? { session_id } : {})
+      },
+      attributes: ['id', 'student_id', 'exam_name', 'exam_type', 'percentage', 'grade', 'total_marks', 'total_obtained', 'is_published', 'created_at'],
+      order: [['created_at', 'DESC']]
+    });
+
+    const resMap = {};
+    results.forEach(r => {
+      if (!resMap[r.student_id]) resMap[r.student_id] = [];
+      resMap[r.student_id].push(r);
+    });
+
+    // Fetch achievements
+    const achievements = await StudentAchievement.findAll({
+      where: { student_id: { [Op.in]: studentIds } },
+      attributes: ['student_id']
+    });
+    const achMap = {};
+    achievements.forEach(a => {
+      achMap[a.student_id] = (achMap[a.student_id] || 0) + 1;
+    });
+
+    const calcGrade = (pct) =>
+      pct >= 90 ? 'A+' : pct >= 80 ? 'A' : pct >= 70 ? 'B' : pct >= 60 ? 'C' : pct >= 40 ? 'D' : 'F';
+
+    let totalAttendanceSum = 0;
+    let studentsWithAttendance = 0;
+    let totalMarksSum = 0;
+    let studentsWithMarks = 0;
+    let topPerformersCount = 0;
+    let attentionNeededCount = 0;
+
+    let list = students.map(s => {
+      const sJson = s.toJSON();
+      const a = attMap[s.id] || { total: 0, present: 0, absent: 0, late: 0 };
+      const attPct = a.total > 0 ? Math.round(((a.present + a.late) / a.total) * 100) : null;
+      if (attPct !== null) {
+        totalAttendanceSum += attPct;
+        studentsWithAttendance++;
+      }
+
+      const rList = resMap[s.id] || [];
+      const latestResult = rList.length > 0 ? rList[0] : null;
+      let avgPct = null;
+      if (rList.length > 0) {
+        const sumP = rList.reduce((acc, curr) => acc + (parseFloat(curr.percentage) || 0), 0);
+        avgPct = Math.round((sumP / rList.length) * 10) / 10;
+        totalMarksSum += avgPct;
+        studentsWithMarks++;
+      }
+
+      const overallGrade = avgPct !== null ? calcGrade(avgPct) : null;
+      const achCount = achMap[s.id] || 0;
+
+      let performanceStatus = 'good';
+      if ((attPct !== null && attPct >= 85) && (avgPct !== null && avgPct >= 80)) {
+        performanceStatus = 'excellent';
+        topPerformersCount++;
+      } else if ((attPct !== null && attPct < 75) || (avgPct !== null && avgPct < 40)) {
+        performanceStatus = 'needs_attention';
+        attentionNeededCount++;
+      }
+
+      return {
+        ...sJson,
+        attendance: {
+          total_days: a.total,
+          present_days: a.present,
+          absent_days: a.absent,
+          late_days: a.late,
+          percentage: attPct
+        },
+        academics: {
+          exams_count: rList.length,
+          latest_exam: latestResult ? {
+            exam_name: latestResult.exam_name,
+            percentage: latestResult.percentage,
+            grade: latestResult.grade,
+            total_obtained: latestResult.total_obtained,
+            total_marks: latestResult.total_marks
+          } : null,
+          average_percentage: avgPct,
+          overall_grade: overallGrade,
+        },
+        achievements_count: achCount,
+        performance_status: performanceStatus
+      };
+    });
+
+    // Apply optional status filtering
+    if (status_filter === 'needs_attention') {
+      list = list.filter(s => s.performance_status === 'needs_attention');
+    } else if (status_filter === 'top_performer') {
+      list = list.filter(s => s.performance_status === 'excellent');
+    } else if (status_filter === 'low_attendance') {
+      list = list.filter(s => s.attendance.percentage !== null && s.attendance.percentage < 75);
+    } else if (status_filter === 'low_marks') {
+      list = list.filter(s => s.academics.average_percentage !== null && s.academics.average_percentage < 40);
+    }
+
+    const parsedPage = parseInt(page, 10);
+    const parsedLimit = parseInt(limit, 10);
+    const totalCount = list.length;
+    const startIndex = (parsedPage - 1) * parsedLimit;
+    const paginatedList = list.slice(startIndex, startIndex + parsedLimit);
+
+    res.json({
+      students: paginatedList,
+      stats: {
+        total_students: totalCount,
+        avg_attendance: studentsWithAttendance > 0 ? Math.round(totalAttendanceSum / studentsWithAttendance) : 0,
+        avg_marks: studentsWithMarks > 0 ? Math.round(totalMarksSum / studentsWithMarks) : 0,
+        top_performers: topPerformersCount,
+        attention_needed: attentionNeededCount
+      },
+      allowed_classes: allowedClasses,
+      pagination: {
+        total: totalCount,
+        page: parsedPage,
+        limit: parsedLimit,
+        pages: Math.ceil(totalCount / parsedLimit) || 1
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/students/:id/performance
+router.get('/:id/performance', protect, hasPermission('VIEW_STUDENTS'), async (req, res) => {
+  try {
+    const studentId = parseInt(req.params.id, 10);
+    const student = await Student.findByPk(studentId, {
+      include: [{ model: Session, as: 'session', attributes: ['id', 'name', 'start_date', 'end_date'] }]
+    });
+
+    if (!student) return res.status(404).json({ message: 'Student not found.' });
+
+    // Authorization check for teacher: MUST be in teacher's allowed classes
+    if (req.user.role === 'teacher') {
+      const allowedClasses = await getTeacherAllowedClasses(req.user.linked_teacher_id);
+      if (!allowedClasses.includes(student.class)) {
+        return res.status(403).json({ message: 'Access denied. This student is not under your assigned classes.' });
+      }
+    }
+
+    // 1. Attendance
+    const [allSessions, allAttRows, promotions] = await Promise.all([
+      Session.findAll({ order: [['start_date', 'ASC'], ['id', 'ASC']] }),
+      Attendance.findAll({
+        where: { student_id: studentId },
+        order: [['date', 'DESC']]
+      }),
+      PromotionHistory.findAll({
+        where: { student_id: studentId },
+        order: [['id', 'ASC']]
+      })
+    ]);
+
+    const {
+      currentSessionId,
+      sessionComparison
+    } = buildStudentSessionAttendance({
+      student,
+      allSessions,
+      allRecords: allAttRows,
+      promotions
+    });
+
+    const totalWorkingDays = allAttRows.filter(r => r.status !== 'holiday').length;
+    const presentDays = allAttRows.filter(r => r.status === 'present').length;
+    const absentDays = allAttRows.filter(r => r.status === 'absent').length;
+    const lateDays = allAttRows.filter(r => r.status === 'late').length;
+    const overallAttPct = totalWorkingDays > 0 ? Math.round(((presentDays + lateDays) / totalWorkingDays) * 100) : 0;
+
+    const monthlyMap = {};
+    const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    allAttRows.forEach(r => {
+      if (!r.date || r.status === 'holiday') return;
+      const d = new Date(r.date);
+      const mKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      if (!monthlyMap[mKey]) {
+        monthlyMap[mKey] = {
+          key: mKey,
+          label: `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`,
+          total: 0,
+          present: 0,
+          absent: 0,
+          late: 0
+        };
+      }
+      monthlyMap[mKey].total++;
+      if (r.status === 'present') monthlyMap[mKey].present++;
+      else if (r.status === 'absent') monthlyMap[mKey].absent++;
+      else if (r.status === 'late') monthlyMap[mKey].late++;
+    });
+
+    const monthlyAttendance = Object.values(monthlyMap)
+      .sort((a, b) => a.key.localeCompare(b.key))
+      .map(m => ({
+        ...m,
+        percentage: m.total > 0 ? Math.round(((m.present + m.late) / m.total) * 100) : 0
+      }));
+
+    // 2. Academic / Results
+    const results = await Result.findAll({
+      where: { student_id: studentId },
+      include: [{ model: ResultSubject, as: 'subjects' }],
+      order: [['created_at', 'DESC']]
+    });
+
+    const calcGrade = (pct) =>
+      pct >= 90 ? 'A+' : pct >= 80 ? 'A' : pct >= 70 ? 'B' : pct >= 60 ? 'C' : pct >= 40 ? 'D' : 'F';
+
+    const subjectStats = {};
+    results.forEach(r => {
+      (r.subjects || []).forEach(sub => {
+        const sName = sub.subject ? sub.subject.trim() : 'General';
+        if (!subjectStats[sName]) {
+          subjectStats[sName] = { subject: sName, total_max: 0, total_obtained: 0, count: 0 };
+        }
+        subjectStats[sName].total_max += sub.max_marks || 0;
+        subjectStats[sName].total_obtained += sub.obtained_marks || 0;
+        subjectStats[sName].count++;
+      });
+    });
+
+    const subjectBreakdown = Object.values(subjectStats).map(s => {
+      const pct = s.total_max > 0 ? Math.round((s.total_obtained / s.total_max) * 100) : 0;
+      return {
+        subject: s.subject,
+        average_percentage: pct,
+        grade: calcGrade(pct),
+        exams_count: s.count,
+        total_obtained: s.total_obtained,
+        total_max: s.total_max
+      };
+    }).sort((a, b) => b.average_percentage - a.average_percentage);
+
+    const avgExamPct = results.length > 0
+      ? Math.round((results.reduce((acc, r) => acc + (parseFloat(r.percentage) || 0), 0) / results.length) * 10) / 10
+      : 0;
+
+    // 3. Achievements
+    const achievements = await StudentAchievement.findAll({
+      where: { student_id: studentId },
+      order: [['event_date', 'DESC'], ['id', 'DESC']]
+    });
+
+    // 4. Fees Summary
+    const fees = await Fee.findAll({
+      where: { student_id: studentId },
+      order: [['created_at', 'DESC']]
+    });
+    const feeSummary = {
+      total_records: fees.length,
+      paid_count: fees.filter(f => f.status === 'paid').length,
+      unpaid_count: fees.filter(f => f.status === 'unpaid').length,
+      partial_count: fees.filter(f => f.status === 'partial').length,
+      latest_fee: fees[0] || null
+    };
+
+    res.json({
+      student: student.toJSON(),
+      attendance: {
+        total_working_days: totalWorkingDays,
+        present_days: presentDays,
+        absent_days: absentDays,
+        late_days: lateDays,
+        percentage: overallAttPct,
+        monthly: monthlyAttendance,
+        session_comparison: Array.from(sessionComparison.values()),
+        recent_records: allAttRows.slice(0, 30)
+      },
+      academics: {
+        total_exams: results.length,
+        average_percentage: avgExamPct,
+        overall_grade: results.length > 0 ? calcGrade(avgExamPct) : 'N/A',
+        best_subject: subjectBreakdown[0] || null,
+        needs_improvement_subject: subjectBreakdown.length > 1 ? subjectBreakdown[subjectBreakdown.length - 1] : null,
+        subject_breakdown: subjectBreakdown,
+        exams: results.map(r => r.toJSON())
+      },
+      achievements: achievements.map(a => a.toJSON()),
+      fees: feeSummary
+    });
+  } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });

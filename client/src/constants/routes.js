@@ -5,6 +5,7 @@ export const ROUTES = {
   ADMIN: {
     ROOT:          '/admin',
     STUDENTS:      '/admin/students',
+    PERFORMANCE:   '/admin/student-performance',
     TEACHERS:      '/admin/teachers',
     ATTENDANCE:    '/admin/attendance',
     FEES:          '/admin/fees',
@@ -14,11 +15,18 @@ export const ROUTES = {
     NOTIFICATIONS: '/admin/notifications',
   },
 
+  // Admin2
+  ADMIN2: {
+    ROOT:          '/admin2',
+    PERFORMANCE:   '/admin2/student-performance',
+  },
+
   // Teacher
   TEACHER: {
-    ROOT:       '/teacher',
-    ATTENDANCE: '/teacher/attendance',
-    MARKS:      '/teacher/marks',
+    ROOT:          '/teacher',
+    PERFORMANCE:   '/teacher/student-performance',
+    ATTENDANCE:    '/teacher/attendance',
+    MARKS:         '/teacher/marks',
   },
 
   // Parent / Fee Collector
@@ -41,6 +49,7 @@ export const ROUTES = {
 
 export const ROLE_HOME = {
   admin:         ROUTES.ADMIN.ROOT,
+  admin2:        ROUTES.ADMIN2.ROOT,
   teacher:       ROUTES.TEACHER.ROOT,
   parent:        ROUTES.PARENT.ROOT,
   student:       ROUTES.PARENT.ROOT,

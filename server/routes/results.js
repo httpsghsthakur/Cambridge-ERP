@@ -81,6 +81,17 @@ router.get('/student/:studentId', protect, async (req, res) => {
       }
     }
 
+    if (req.user.role === 'teacher') {
+      const student = await Student.findByPk(studentId);
+      if (!student) {
+        return res.status(404).json({ message: 'Student not found.' });
+      }
+      const allowedClasses = await getTeacherAllowedClasses(req.user.linked_teacher_id);
+      if (!allowedClasses.includes(student.class)) {
+        return res.status(403).json({ message: 'Access denied. Student is not in your assigned classes.' });
+      }
+    }
+
     const where = { student_id: studentId };
     if (req.user.role === 'parent' || req.user.role === 'student') where.is_published = true;
 
