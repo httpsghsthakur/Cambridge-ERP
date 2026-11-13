@@ -20,7 +20,6 @@ import FeeStructure from './pages/admin/FeeStructure';
 import Events from './pages/admin/Events';
 import AdminTeacherAttendance from './pages/admin/TeacherAttendance';
 import Settings from './pages/admin/Settings';
-import DocumentRequests from './pages/admin/DocumentRequests';
 import StaffLeaveManagement from './pages/admin/StaffLeaveManagement';
 import AdminLeaveManagement from './pages/admin/LeaveManagement';
 import AdminDatesheets from './pages/admin/AdminDatesheets';
@@ -56,7 +55,6 @@ import MyNotifications from './pages/parent/MyNotifications';
 
 import MyProfilePage from './pages/common/MyProfilePage';
 import BulkUploadStudents from './pages/common/BulkUploadStudents';
-import MyDocuments from './pages/common/MyDocuments';
 import StudentPerformance from './pages/common/StudentPerformance';
 
 import FCLayout from './pages/feecollector/FCLayout';
@@ -108,8 +106,6 @@ export default function App() {
             <Route path="settings" element={<Settings />} />
             <Route path="logs" element={<ActivityLogs />} />
             <Route path="security-logs" element={<SecurityLogs />} />
-            <Route path="documents" element={<DocumentRequests />} />
-            <Route path="my-documents" element={<MyDocuments />} />
           </Route>
 
           <Route
@@ -134,7 +130,6 @@ export default function App() {
             <Route path="bulk-upload" element={<BulkUploadStudents />} />
             <Route path="notifications" element={<MyNotifications />} />
             <Route path="events" element={<Events />} />
-            <Route path="my-documents" element={<MyDocuments />} />
           </Route>
 
           <Route
@@ -157,7 +152,6 @@ export default function App() {
             <Route path="timetable" element={<Timetable />} />
             <Route path="profile" element={<MyProfilePage />} />
             <Route path="notifications" element={<MyNotifications />} />
-            <Route path="my-documents" element={<MyDocuments />} />
           </Route>
 
           <Route
@@ -178,7 +172,6 @@ export default function App() {
             <Route path="events" element={<Events />} />
             <Route path="fees" element={<FeeStatus />} />
             <Route path="notifications" element={<MyNotifications />} />
-            <Route path="my-documents" element={<MyDocuments />} />
           </Route>
 
           <Route
@@ -199,7 +192,6 @@ export default function App() {
             <Route path="bulk-upload" element={<BulkUploadStudents />} />
             <Route path="notifications" element={<MyNotifications />} />
             <Route path="events" element={<Events />} />
-            <Route path="my-documents" element={<MyDocuments />} />
           </Route>
         </Routes>
         </BrowserRouter>

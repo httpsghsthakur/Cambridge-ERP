@@ -43,7 +43,6 @@ const navConfig = {
       items: [
         { icon: 'notices', label: 'Notifications', to: '/admin/notifications' },
         { icon: 'timetable', label: 'Upcoming Events', to: '/admin/events' },
-        { icon: 'documents', label: 'Document Requests', to: '/admin/documents' },
       ],
     },
     {
@@ -78,7 +77,6 @@ const navConfig = {
         { icon: 'timetable', label: 'Timetable', to: '/admin2/timetable' },
         { icon: 'profile', label: 'My Profile', to: '/admin2/profile' },
         { icon: 'events', label: 'Upcoming Events', to: '/admin2/events' },
-        { icon: 'documents', label: 'My Documents', to: '/admin2/my-documents' }
       ],
     },
   ],
@@ -96,7 +94,6 @@ const navConfig = {
         { icon: 'teacher-attendance', label: 'My Attendance', to: '/teacher/my-attendance' },
         { icon: 'notices', label: 'Leave Management', to: '/teacher/leaves' },
         { icon: 'timetable', label: 'Timetable', to: '/teacher/timetable' },
-        { icon: 'documents', label: 'My Documents', to: '/teacher/my-documents' },
         { icon: 'profile', label: 'My Profile', to: '/teacher/profile' },
       ],
     },
@@ -115,7 +112,6 @@ const navConfig = {
         { icon: 'events', label: 'Upcoming Events', to: '/parent/events' },
         { icon: 'notices', label: 'Notices', to: '/parent/notifications' },
         { icon: 'fees', label: 'Fees', to: '/parent/fees' },
-        { icon: 'documents', label: 'My Documents', to: '/parent/my-documents' },
       ]
     }
   ],
@@ -133,7 +129,6 @@ const navConfig = {
         { icon: 'events', label: 'Upcoming Events', to: '/parent/events' },
         { icon: 'notices', label: 'Notices', to: '/parent/notifications' },
         { icon: 'fees', label: 'Fees', to: '/parent/fees' },
-        { icon: 'documents', label: 'My Documents', to: '/parent/my-documents' },
       ]
     }
   ],
@@ -147,7 +142,6 @@ const navConfig = {
         { icon: 'credentials', label: 'Credentials', to: '/fc/credentials' },
         { icon: 'student', label: 'Admissions & Approvals', to: '/fc/admissions' },
         { icon: 'bulk-upload', label: 'Bulk Admission', to: '/fc/bulk-upload' },
-        { icon: 'documents', label: 'My Documents', to: '/fc/my-documents' },
         { icon: 'profile', label: 'My Profile', to: '/fc/profile' },
       ],
     },

@@ -95,9 +95,6 @@ const PERMISSIONS = {
   // Timetable
   MANAGE_TIMETABLE: ['admin', 'admin2'],
   VIEW_TIMETABLE:   ['admin', 'admin2', 'teacher', 'parent', 'student'],
-
-  // Document requests
-  MANAGE_DOCUMENTS: ['admin', 'admin2'],
 };
 
 const CLASSES = [

@@ -21,8 +21,6 @@ const AuditLog          = require('./AuditLog');
 const PushSubscription  = require('./PushSubscription');
 const Setting           = require('./Setting');
 const Event             = require('./Event');
-const DocumentRequest    = require('./DocumentRequest');
-const DocumentSubmission = require('./DocumentSubmission');
 const StaffLeave         = require('./StaffLeave');
 const SecurityLog        = require('./SecurityLog');
 const ExamDatesheet      = require('./ExamDatesheet');
@@ -168,14 +166,6 @@ for (const modelName of Object.keys(sequelize.models)) {
   };
 }
 
-DocumentRequest.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
-User.hasMany(DocumentRequest, { foreignKey: 'created_by', as: 'createdRequests' });
-
-DocumentRequest.hasMany(DocumentSubmission, { foreignKey: 'request_id', as: 'submissions', onDelete: 'CASCADE' });
-DocumentSubmission.belongsTo(DocumentRequest, { foreignKey: 'request_id', as: 'request' });
-
-DocumentSubmission.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
-User.hasMany(DocumentSubmission, { foreignKey: 'user_id', as: 'submissions' });
 
 module.exports = {
   sequelize,
@@ -200,8 +190,6 @@ module.exports = {
   PushSubscription,
   Setting,
   Event,
-  DocumentRequest,
-  DocumentSubmission,
   StaffLeave,
   SecurityLog,
   ExamDatesheet,
