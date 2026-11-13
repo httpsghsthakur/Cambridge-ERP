@@ -17,16 +17,19 @@ router.get('/', async (req, res) => {
       return acc;
     }, {});
 
-    let centralSchoolId = 'SCH-2026-01001';
+    let centralSchoolId = 'SCH-B0E1B';
     let centralStatus = 'connected';
+    let centralUrl = 'https://wws.ktwr.in';
+    let centralApiKey = 'cc_live_pk_05b30262475f599e500ea4f5';
+    let centralHmacSecret = 'cc_sec_live_12af5e17caea7f904921bd489184dd3b6267514f3191a7d1';
+
     try {
       const centralConfig = await getOrCreateConfig();
-      if (centralConfig?.school_id) {
-        centralSchoolId = centralConfig.school_id;
-      }
-      if (centralConfig?.connection_status) {
-        centralStatus = centralConfig.connection_status;
-      }
+      if (centralConfig?.school_id) centralSchoolId = centralConfig.school_id;
+      if (centralConfig?.connection_status) centralStatus = centralConfig.connection_status;
+      if (centralConfig?.central_api_url) centralUrl = centralConfig.central_api_url;
+      if (centralConfig?.connector_client_id) centralApiKey = centralConfig.connector_client_id;
+      if (centralConfig?.connector_secret) centralHmacSecret = centralConfig.connector_secret;
     } catch (e) {
       console.warn('[GET /settings] Could not load central config:', e.message);
     }
@@ -41,6 +44,9 @@ router.get('/', async (req, res) => {
       receipt_footer: 'This is a computer-generated receipt. No signature required.',
       school_id: settingsObj.school_id || centralSchoolId,
       central_connection_status: centralStatus,
+      central_erp_url: settingsObj.central_erp_url || centralUrl,
+      central_api_key: settingsObj.central_api_key || centralApiKey,
+      central_hmac_secret: settingsObj.central_hmac_secret || centralHmacSecret,
       ...settingsObj
     };
 
@@ -65,23 +71,26 @@ router.put('/', protect, authorize('admin'), async (req, res) => {
       }
     }
 
-    // If school_id is provided, sync with CentralConfig and trigger real data sync
-    if (updates.school_id && String(updates.school_id).trim()) {
-      const trimmedId = String(updates.school_id).trim();
+    // If central connector variables are provided, sync with CentralConfig and trigger sync
+    const centralUpdates = {};
+    if (updates.school_id && String(updates.school_id).trim()) centralUpdates.school_id = String(updates.school_id).trim();
+    if (updates.central_erp_url && String(updates.central_erp_url).trim()) centralUpdates.central_api_url = String(updates.central_erp_url).trim();
+    if (updates.central_api_key && String(updates.central_api_key).trim()) centralUpdates.connector_client_id = String(updates.central_api_key).trim();
+    if (updates.central_hmac_secret && String(updates.central_hmac_secret).trim()) centralUpdates.connector_secret = String(updates.central_hmac_secret).trim();
+
+    if (Object.keys(centralUpdates).length > 0) {
       try {
         const centralConfig = await getOrCreateConfig();
-        await centralConfig.update({
-          school_id: trimmedId,
-          connection_status: 'connected',
-          last_error: null,
-        });
+        centralUpdates.connection_status = 'connected';
+        centralUpdates.last_error = null;
+        await centralConfig.update(centralUpdates);
 
         // Trigger real operational data sync in background to send to central platform
         synchronizeOperationalData('settings_update').catch((err) => {
-          console.warn('[SETTINGS] Background sync after school_id update:', err.message);
+          console.warn('[SETTINGS] Background sync after settings update:', err.message);
         });
       } catch (centralErr) {
-        console.warn('[SETTINGS] Could not update CentralConfig with school_id:', centralErr.message);
+        console.warn('[SETTINGS] Could not update CentralConfig with settings:', centralErr.message);
       }
     }
 

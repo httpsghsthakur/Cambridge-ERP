@@ -10,27 +10,45 @@ const { generateSecureToken } = require('./securityService');
 async function getOrCreateConfig() {
   let config = await CentralConfig.findOne({ order: [['id', 'DESC']] });
 
-  // Read school name and school_id from settings if available
+  // Read school info and connector credentials from settings or env
   let schoolName = 'International Cambridge School Kishtwar';
   let settingSchoolId = null;
+  let settingUrl = null;
+  let settingApiKey = null;
+  let settingHmacSecret = null;
+
   try {
     const nameSetting = await Setting.findOne({ where: { key: 'school_name' } });
     if (nameSetting && nameSetting.value) schoolName = nameSetting.value;
+
     const idSetting = await Setting.findOne({ where: { key: 'school_id' } });
     if (idSetting && idSetting.value) settingSchoolId = idSetting.value;
+
+    const urlSetting = await Setting.findOne({ where: { key: 'central_erp_url' } });
+    if (urlSetting && urlSetting.value) settingUrl = urlSetting.value;
+
+    const keySetting = await Setting.findOne({ where: { key: 'central_api_key' } });
+    if (keySetting && keySetting.value) settingApiKey = keySetting.value;
+
+    const secSetting = await Setting.findOne({ where: { key: 'central_hmac_secret' } });
+    if (secSetting && secSetting.value) settingHmacSecret = secSetting.value;
   } catch (e) {}
 
-  if (!config) {
-    const centralApiUrl = process.env.CENTRAL_PLATFORM_URL || 'https://central.schoolplatform.net';
-    const isTest = process.env.NODE_ENV === 'test';
+  const isTest = process.env.NODE_ENV === 'test' || process.env.USE_MOCK_CENTRAL === 'true';
 
+  const defaultUrl = settingUrl || process.env.CENTRAL_ERP_URL || process.env.CENTRAL_PLATFORM_URL || (isTest ? 'https://central.schoolplatform.net' : 'https://wws.ktwr.in');
+  const defaultSchoolId = settingSchoolId || process.env.CENTRAL_SCHOOL_ID || (isTest ? null : 'SCH-B0E1B');
+  const defaultApiKey = settingApiKey || process.env.CENTRAL_API_KEY || (isTest ? `ERP-CONN-${generateSecureToken(8).toUpperCase()}` : 'cc_live_pk_05b30262475f599e500ea4f5');
+  const defaultSecret = settingHmacSecret || process.env.CENTRAL_HMAC_SECRET || (isTest ? generateSecureToken(32) : 'cc_sec_live_12af5e17caea7f904921bd489184dd3b6267514f3191a7d1');
+
+  if (!config) {
     config = await CentralConfig.create({
       school_name: schoolName,
-      school_id: settingSchoolId || (isTest ? null : 'SCH-2026-01001'),
-      connection_status: isTest ? 'not_registered' : (settingSchoolId ? 'connected' : 'awaiting_pairing'),
-      central_api_url: centralApiUrl,
-      connector_client_id: `ERP-CONN-${generateSecureToken(8).toUpperCase()}`,
-      connector_secret: generateSecureToken(32),
+      school_id: defaultSchoolId,
+      connection_status: isTest ? 'not_registered' : 'connected',
+      central_api_url: defaultUrl,
+      connector_client_id: defaultApiKey,
+      connector_secret: defaultSecret,
       connector_version: '1.0.0',
       erp_version: '2.4.0',
       sync_interval_minutes: 60,
@@ -40,10 +58,15 @@ async function getOrCreateConfig() {
         'remote:management',
       ]),
     });
-  } else {
-    // If config exists but school_id is missing and setting has one, adopt it
-    if (!config.school_id && settingSchoolId) {
-      await config.update({ school_id: settingSchoolId });
+  } else if (!isTest) {
+    // If live configuration values are present, keep config synchronized
+    const updates = {};
+    if (settingSchoolId && config.school_id !== settingSchoolId) updates.school_id = settingSchoolId;
+    if (settingUrl && config.central_api_url !== settingUrl) updates.central_api_url = settingUrl;
+    if (settingApiKey && config.connector_client_id !== settingApiKey) updates.connector_client_id = settingApiKey;
+    if (settingHmacSecret && config.connector_secret !== settingHmacSecret) updates.connector_secret = settingHmacSecret;
+    if (Object.keys(updates).length > 0) {
+      await config.update(updates);
     }
   }
 

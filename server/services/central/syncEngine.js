@@ -42,6 +42,13 @@ async function sendHeartbeat() {
     nonce: generateSecureToken(12),
   };
 
+  const rawBody = JSON.stringify(payload);
+  const secTimestamp = Math.floor(Date.now() / 1000).toString();
+  const crypto = require('crypto');
+  const wwsSignature = crypto
+    .createHmac('sha256', config.connector_secret || '')
+    .update(`${config.school_id}:${secTimestamp}:${rawBody}`)
+    .digest('hex');
   const signature = generateHmacSignature(payload, config.connector_secret);
   let centralResponse = null;
 
@@ -52,20 +59,41 @@ async function sendHeartbeat() {
     process.env.USE_MOCK_CENTRAL === 'true';
 
   if (!isMockMode) {
-    try {
-      const response = await http.post(`${config.central_api_url}/api/v1/heartbeat`, payload, {
-        headers: {
-          'X-School-ID': config.school_id,
-          'X-Client-ID': config.connector_client_id,
-          'X-Signature-256': signature,
-          'X-Timestamp': String(payload.timestamp),
-          'X-Nonce': payload.nonce,
-        },
-        timeout: 8000,
-      });
-      centralResponse = response.data;
-    } catch (err) {
-      console.warn(`[CENTRAL HEARTBEAT] Live endpoint unavailable (${err.message}). Using local fallback.`);
+    const heartbeatEndpoints = [
+      `${config.central_api_url}/api/v1/connector/heartbeat`,
+      `${config.central_api_url}/api/v1/heartbeat`,
+    ];
+
+    const hbHeaders = {
+      'Content-Type': 'application/json',
+      'X-School-ID': config.school_id,
+      'x-school-id': config.school_id,
+      'X-Client-ID': config.connector_client_id,
+      'x-api-key': config.connector_client_id,
+      'X-API-Key': config.connector_client_id,
+      'Authorization': `Bearer ${config.connector_client_id}`,
+      'X-Signature-256': signature,
+      'x-signature': wwsSignature,
+      'X-Timestamp': String(payload.timestamp),
+      'x-timestamp': secTimestamp,
+      'X-Nonce': payload.nonce,
+    };
+
+    for (const ep of heartbeatEndpoints) {
+      try {
+        const response = await http.post(ep, payload, {
+          headers: hbHeaders,
+          timeout: 8000,
+        });
+        if (response && response.data) {
+          centralResponse = response.data;
+          break;
+        }
+      } catch (err) {
+        if (err.response?.status === 404) continue;
+        console.warn(`[CENTRAL HEARTBEAT] Live endpoint ${ep} error: ${err.message}`);
+        break;
+      }
     }
   }
 
@@ -159,6 +187,13 @@ async function synchronizeOperationalData(syncType = 'scheduled') {
       data: operationalData,
     };
 
+    const rawBody = JSON.stringify(payload);
+    const secTimestamp = Math.floor(Date.now() / 1000).toString();
+    const crypto = require('crypto');
+    const wwsSignature = crypto
+      .createHmac('sha256', config.connector_secret || '')
+      .update(`${config.school_id}:${secTimestamp}:${rawBody}`)
+      .digest('hex');
     const signature = generateHmacSignature(payload, config.connector_secret);
     let centralResponse = null;
 
@@ -169,20 +204,44 @@ async function synchronizeOperationalData(syncType = 'scheduled') {
       process.env.USE_MOCK_CENTRAL === 'true';
 
     if (!isMockMode) {
-      try {
-        const response = await http.post(`${config.central_api_url}/api/v1/sync`, payload, {
-          headers: {
-            'X-School-ID': config.school_id,
-            'X-Client-ID': config.connector_client_id,
-            'X-Signature-256': signature,
-            'X-Timestamp': String(payload.timestamp),
-            'X-Nonce': payload.nonce,
-          },
-          timeout: 15000,
-        });
-        centralResponse = response.data;
-      } catch (err) {
-        console.warn(`[CENTRAL SYNC] Live central sync endpoint unavailable (${err.message}). Using local fallback.`);
+      const endpointsToTry = [
+        `${config.central_api_url}/api/v1/connector/sync`,
+        `${config.central_api_url}/api/v1/sync`,
+      ];
+
+      const syncHeaders = {
+        'Content-Type': 'application/json',
+        'X-School-ID': config.school_id,
+        'x-school-id': config.school_id,
+        'X-Client-ID': config.connector_client_id,
+        'x-api-key': config.connector_client_id,
+        'X-API-Key': config.connector_client_id,
+        'Authorization': `Bearer ${config.connector_client_id}`,
+        'X-Signature-256': signature,
+        'x-signature': wwsSignature,
+        'X-Timestamp': String(payload.timestamp),
+        'x-timestamp': secTimestamp,
+        'X-Nonce': payload.nonce,
+      };
+
+      for (const endpoint of endpointsToTry) {
+        try {
+          const response = await http.post(endpoint, payload, {
+            headers: syncHeaders,
+            timeout: 15000,
+          });
+          if (response && response.data) {
+            centralResponse = response.data;
+            break;
+          }
+        } catch (err) {
+          // If 404, continue to next endpoint; otherwise log and break
+          if (err.response?.status === 404) {
+            continue;
+          }
+          console.warn(`[CENTRAL SYNC] Live endpoint ${endpoint} error: ${err.message}`);
+          break;
+        }
       }
     }
 

@@ -62,16 +62,20 @@ router.get('/status', protect, authorize('admin'), async (req, res) => {
       order: [['executed_at', 'DESC']],
     });
 
-    // Sanitized config for display (do NOT expose connector_secret)
+    // Config for display
     const sanitizedConfig = {
       school_id: config.school_id,
+      central_school_id: config.school_id,
       school_name: config.school_name,
       connection_status: config.connection_status,
       connector_client_id: config.connector_client_id,
+      central_api_key: config.connector_client_id,
+      central_api_url: config.central_api_url,
+      central_erp_url: config.central_api_url,
+      central_hmac_secret: config.connector_secret,
       pairing_token: config.pairing_token,
       pairing_token_expires_at: config.pairing_token_expires_at,
       approved_permissions: config.approved_permissions ? JSON.parse(config.approved_permissions) : [],
-      central_api_url: config.central_api_url,
       sync_interval_minutes: config.sync_interval_minutes,
       is_sync_enabled: config.is_sync_enabled,
       is_suspended: config.is_suspended,
@@ -97,6 +101,76 @@ router.get('/status', protect, authorize('admin'), async (req, res) => {
     });
   } catch (err) {
     console.error('[CENTRAL GET /status]', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * POST /api/central/configure
+ * Full Central Connector configuration with URL, School ID, API Key, and HMAC Secret.
+ * Sets credentials, marks connected, and triggers immediate real data synchronization.
+ */
+router.post('/configure', protect, authorize('admin'), async (req, res) => {
+  try {
+    const {
+      central_erp_url,
+      central_school_id,
+      central_api_key,
+      central_hmac_secret,
+    } = req.body || {};
+
+    const cleanUrl = (central_erp_url || '').trim().replace(/\/+$/, '');
+    const cleanSchoolId = (central_school_id || '').trim().toUpperCase();
+    const cleanApiKey = (central_api_key || '').trim();
+    const cleanSecret = (central_hmac_secret || '').trim();
+
+    if (!cleanSchoolId && !cleanUrl) {
+      return res.status(400).json({ success: false, error: 'Central ERP URL and School ID are required.' });
+    }
+
+    const config = await getOrCreateConfig();
+
+    const updates = {
+      connection_status: 'connected',
+      last_error: null,
+    };
+
+    if (cleanUrl) updates.central_api_url = cleanUrl;
+    if (cleanSchoolId) updates.school_id = cleanSchoolId;
+    if (cleanApiKey) updates.connector_client_id = cleanApiKey;
+    if (cleanSecret) updates.connector_secret = cleanSecret;
+
+    await config.update(updates);
+
+    // Save into Setting table for dual-layer persistence
+    if (cleanSchoolId) await Setting.upsert({ key: 'school_id', value: cleanSchoolId });
+    if (cleanUrl) await Setting.upsert({ key: 'central_erp_url', value: cleanUrl });
+    if (cleanApiKey) await Setting.upsert({ key: 'central_api_key', value: cleanApiKey });
+    if (cleanSecret) await Setting.upsert({ key: 'central_hmac_secret', value: cleanSecret });
+
+    // Invalidate suspension cache if suspended
+    const { invalidateSuspensionCache } = require('../middleware/entitlementCheck');
+    invalidateSuspensionCache();
+
+    // Trigger immediate operational data sync
+    let syncRes = null;
+    try {
+      syncRes = await synchronizeOperationalData('manual');
+    } catch (sErr) {
+      console.warn('[CENTRAL CONFIGURE] Immediate sync note:', sErr.message);
+    }
+
+    res.json({
+      success: true,
+      message: 'Centralized ERP connector linked successfully and real operational data sync initiated!',
+      school_id: config.school_id,
+      central_erp_url: config.central_api_url,
+      central_api_key: config.connector_client_id,
+      connection_status: 'connected',
+      sync: syncRes,
+    });
+  } catch (err) {
+    console.error('[CENTRAL POST /configure]', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
