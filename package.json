@@ -1,0 +1,28 @@
+{
+  "name": "school-erp",
+  "version": "1.0.0",
+  "description": "School ERP - Full Stack Management System",
+  "main": "server/server.js",
+  "engines": {
+    "node": ">=18",
+    "npm": ">=9"
+  },
+  "scripts": {
+    "start": "cd server && node server.js",
+    "install:client": "cd client && npm install",
+    "install:server": "cd server && npm install",
+    "install:all": "npm run install:server && npm run install:client",
+    "build:client": "cd client && npm run build",
+    "build": "npm run install:all && npm run build:client",
+    "postinstall": "npm run install:all && npm run build:client",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm start",
+    "seed": "cd server && node seed.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/httpsghsthakur/Cambridge-ERP.git"
+  },
+  "author": "httpsghsthakur",
+  "license": "ISC"
+}

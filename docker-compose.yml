@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  db:
+    image: mysql:8.0
+    container_name: school-erp-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASS:-root}
+      MYSQL_DATABASE: ${DB_NAME:-school_erp}
+      MYSQL_USER: ${DB_USER:-erp_user}
+      MYSQL_PASSWORD: ${DB_PASS:-root}
+    ports:
+      - "3306:3306"
+    volumes:
+      - db-data:/var/lib/mysql
+    networks:
+      - erp-network
+
+  # Redis Cache
+  redis:
+    image: redis:alpine
+    container_name: school-erp-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - erp-network
+
+  # Node.js Backend Server
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: school-erp-server
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - DB_HOST=db
+      - DB_USER=${DB_USER:-erp_user}
+      - DB_PASS=${DB_PASS:-root}
+      - DB_NAME=${DB_NAME:-school_erp}
+      - JWT_SECRET=${JWT_SECRET:-your_super_secret_jwt_key_here}
+      - REDIS_URL=redis://redis:6379
+      - NODE_ENV=production
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./server/public/uploads:/usr/src/app/public/uploads
+    networks:
+      - erp-network
+
+  # React Frontend (NGINX)
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: school-erp-client
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+    networks:
+      - erp-network
+
+volumes:
+  db-data:
+
+networks:
+  erp-network:
+    driver: bridge
