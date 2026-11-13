@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useSettings } from '../../context/SettingsContext';
 import API from '../../utils/api';
 import { getGradeBg, getGradeColor } from '../../utils/helpers';
 import { generateReportCard } from '../../utils/pdfGenerator';
@@ -9,6 +10,7 @@ import toast from 'react-hot-toast';
 
 export default function ReportCard() {
   const { user } = useAuth();
+  const { settings } = useSettings() || {};
   const student  = user?.linkedStudent;
   const [results, setResults]       = useState([]);
   const [selected, setSelected]     = useState(null);
@@ -25,7 +27,7 @@ export default function ReportCard() {
 
   const handleDownload = async () => {
     setDownloading(true);
-    try { generateReportCard(student, selected); toast.success('Downloaded!'); }
+    try { await generateReportCard(student, selected, settings); toast.success('Official Marksheet Downloaded!'); }
     catch { toast.error('PDF generation failed.'); }
     finally { setDownloading(false); }
   };

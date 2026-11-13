@@ -150,7 +150,7 @@ export default function StudentPerformance() {
     if (!detailData) return;
     setPdfGenerating(true);
     try {
-      generateConsolidatedMarksheet(detailData.student, detailData, settings);
+      await generateConsolidatedMarksheet(detailData.student, detailData, settings);
       toast.success('Consolidated marksheet for all exams downloaded!');
     } catch (err) {
       console.error(err);
@@ -164,7 +164,7 @@ export default function StudentPerformance() {
     if (!detailData) return;
     setPdfGenerating(true);
     try {
-      generateComprehensivePerformanceReport(detailData.student, detailData, settings);
+      await generateComprehensivePerformanceReport(detailData.student, detailData, settings);
       toast.success('Comprehensive student performance report downloaded!');
     } catch (err) {
       console.error(err);
@@ -174,10 +174,10 @@ export default function StudentPerformance() {
     }
   };
 
-  const handleDownloadSingleExam = (exam) => {
+  const handleDownloadSingleExam = async (exam) => {
     if (!detailData || !exam) return;
     try {
-      generateReportCard(detailData.student, exam);
+      await generateReportCard(detailData.student, exam, settings);
       toast.success(`Marksheet for ${exam.exam_name} downloaded!`);
     } catch (err) {
       console.error(err);
@@ -191,7 +191,7 @@ export default function StudentPerformance() {
     const toastId = toast.loading('Generating consolidated marksheet...');
     try {
       const res = await API.get(`/students/${studentId}/performance`);
-      generateConsolidatedMarksheet(res.data.student, res.data, settings);
+      await generateConsolidatedMarksheet(res.data.student, res.data, settings);
       toast.success('Marksheet downloaded!', { id: toastId });
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to download marksheet', { id: toastId });
