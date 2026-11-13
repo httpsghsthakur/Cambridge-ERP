@@ -184,6 +184,28 @@ async function synchronizeOperationalData(syncType = 'scheduled') {
       connector_version: config.connector_version,
       timestamp: Date.now(),
       nonce: generateSecureToken(12),
+      idempotency_key: `sync-${config.school_id}-${Date.now()}`,
+      student_statistics: {
+        total_students: operationalData.students?.total_count || 0,
+        active_students: operationalData.students?.active_count || 0,
+        inactive_students: operationalData.students?.inactive_count || 0,
+        recent_admissions: 0,
+        departed_students: 0,
+        class_distribution: operationalData.students?.class_wise_distribution || {},
+      },
+      teacher_statistics: {
+        total_teachers: operationalData.teachers?.total_count || 0,
+        active_teachers: operationalData.teachers?.active_count || 0,
+        inactive_teachers: operationalData.teachers?.inactive_count || 0,
+        non_teaching_staff: 0,
+        recent_staff_hires: 0,
+      },
+      operational_statistics: {
+        attendance_rate_pct: operationalData.attendance?.overall_attendance_rate || 95.0,
+        daily_active_logins: 0,
+        storage_used_mb: 0,
+      },
+      security_events: [],
       data: operationalData,
     };
 

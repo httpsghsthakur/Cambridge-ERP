@@ -115,6 +115,7 @@ app.use(entitlementCheck);
 
 app.use('/api/central', require('./routes/central'));
 app.use('/api/central-billing', require('./routes/centralBilling'));
+app.use('/api/v1/connector', require('./routes/connector'));
 
 app.use('/api/class-subjects', classSubjectRoutes);
 app.use('/api/auth', require('./routes/auth'));

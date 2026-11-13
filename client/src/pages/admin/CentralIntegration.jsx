@@ -5,20 +5,10 @@ import toast from 'react-hot-toast';
 export default function CentralIntegration() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const [pinging, setPinging] = useState(false);
-  const [showSecret, setShowSecret] = useState(false);
-  const [pasteModalOpen, setPasteModalOpen] = useState(false);
-  const [rawEnvText, setRawEnvText] = useState('');
-
-  // Connector Form Fields
-  const [form, setForm] = useState({
-    central_erp_url: 'https://wws.ktwr.in',
-    central_school_id: 'SCH-B0E1B',
-    central_api_key: 'cc_live_pk_05b30262475f599e500ea4f5',
-    central_hmac_secret: 'cc_sec_live_12af5e17caea7f904921bd489184dd3b6267514f3191a7d1',
-  });
+  const [actionLoading, setActionLoading] = useState(false);
+  const [schoolId, setSchoolId] = useState('SCH-B0E1B');
+  const [centralUrl, setCentralUrl] = useState('https://wws.ktwr.in');
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const fetchStatus = async () => {
     try {
@@ -27,12 +17,12 @@ export default function CentralIntegration() {
       if (res.data?.success) {
         setData(res.data);
         const cfg = res.data.config || {};
-        setForm({
-          central_erp_url: cfg.central_erp_url || cfg.central_api_url || 'https://wws.ktwr.in',
-          central_school_id: cfg.central_school_id || cfg.school_id || 'SCH-B0E1B',
-          central_api_key: cfg.central_api_key || cfg.connector_client_id || 'cc_live_pk_05b30262475f599e500ea4f5',
-          central_hmac_secret: cfg.central_hmac_secret || 'cc_sec_live_12af5e17caea7f904921bd489184dd3b6267514f3191a7d1',
-        });
+        if (cfg.school_id) {
+          setSchoolId(cfg.school_id);
+        }
+        if (cfg.central_api_url) {
+          setCentralUrl(cfg.central_api_url);
+        }
       }
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to fetch Central Connector status');
@@ -45,48 +35,85 @@ export default function CentralIntegration() {
     fetchStatus();
   }, []);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSaveConfig = async (e) => {
+  // Save School ID & Trigger / Surface Approval Request
+  const handleSendApprovalRequest = async (e) => {
     if (e) e.preventDefault();
-    if (!form.central_school_id.trim()) {
-      return toast.error('School ID is required.');
-    }
-    if (!form.central_erp_url.trim()) {
-      return toast.error('Central Platform URL is required.');
+    const cleanId = schoolId.trim().toUpperCase();
+    if (!cleanId) {
+      return toast.error('Please enter the School ID from WWS.');
     }
 
-    setSaving(true);
+    setActionLoading(true);
     try {
-      const res = await API.post('/central/configure', {
-        central_erp_url: form.central_erp_url.trim(),
-        central_school_id: form.central_school_id.trim(),
-        central_api_key: form.central_api_key.trim(),
-        central_hmac_secret: form.central_hmac_secret.trim(),
+      const res = await API.post('/central/send-approval-request', {
+        school_id: cleanId,
+        central_erp_url: centralUrl.trim(),
       });
 
       if (res.data?.success) {
-        toast.success(res.data.message || 'Central ERP linked successfully!');
+        toast.success(res.data.message || 'Approval request ready for review!');
         await fetchStatus();
       } else {
-        toast.error(res.data?.error || 'Failed to save configuration');
+        toast.error(res.data?.error || 'Failed to generate approval request');
       }
     } catch (err) {
-      toast.error(err.response?.data?.error || err.message || 'Configuration failed');
+      toast.error(err.response?.data?.error || err.message || 'Request failed');
     } finally {
-      setSaving(false);
+      setActionLoading(false);
     }
   };
 
+  // Approve Data Access & Transmit All Real Data to WWS
+  const handleApproveAndTransmit = async () => {
+    const cleanId = schoolId.trim().toUpperCase();
+    if (!cleanId) {
+      return toast.error('School ID is missing.');
+    }
+
+    setActionLoading(true);
+    try {
+      const res = await API.post('/central/approve-request', {
+        school_id: cleanId,
+      });
+
+      if (res.data?.success) {
+        toast.success(res.data.message || 'Approval granted! All real data transmitted to WWS.');
+        await fetchStatus();
+      } else {
+        toast.error(res.data?.error || 'Approval failed');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.error || err.message || 'Failed to approve and transmit data');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Reject / Dismiss Request
+  const handleRejectRequest = async () => {
+    setActionLoading(true);
+    try {
+      const res = await API.post('/central/reject-request', {
+        school_id: schoolId.trim().toUpperCase(),
+      });
+      if (res.data?.success) {
+        toast.success('Approval request dismissed.');
+        await fetchStatus();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to reject request');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Manual Re-Transmit Real Data
   const handleSyncNow = async () => {
-    setSyncing(true);
+    setActionLoading(true);
     try {
       const res = await API.post('/central/sync');
       if (res.data?.success) {
-        toast.success(`Real data synchronized! ${res.data.records_synced || 0} records transmitted to Central Platform.`);
+        toast.success(`Real data re-synchronized! ${res.data.records_synced || 0} records transmitted to Central Platform.`);
         await fetchStatus();
       } else {
         toast.error(res.data?.error || 'Sync failed');
@@ -94,53 +121,26 @@ export default function CentralIntegration() {
     } catch (err) {
       toast.error(err.response?.data?.error || 'Sync request failed');
     } finally {
-      setSyncing(false);
+      setActionLoading(false);
     }
   };
 
+  // Telemetry Heartbeat
   const handleHeartbeat = async () => {
-    setPinging(true);
+    setActionLoading(true);
     try {
       const res = await API.post('/central/heartbeat');
       if (res.data?.success) {
-        toast.success('Heartbeat telemetry acknowledged by Central Platform!');
+        toast.success('Heartbeat vitality ping acknowledged by Central Platform!');
         await fetchStatus();
       } else {
         toast.error(res.data?.error || 'Heartbeat ping failed');
       }
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Heartbeat request failed');
+      toast.error(err.response?.data?.error || 'Heartbeat ping failed');
     } finally {
-      setPinging(false);
+      setActionLoading(false);
     }
-  };
-
-  const handleParseEnvText = () => {
-    if (!rawEnvText.trim()) return toast.error('Please paste your configuration lines first.');
-
-    const newForm = { ...form };
-    const lines = rawEnvText.split('\n');
-
-    lines.forEach(line => {
-      const cleaned = line.trim();
-      if (!cleaned || cleaned.startsWith('#')) return;
-
-      const [key, ...rest] = cleaned.split('=');
-      if (!key || rest.length === 0) return;
-
-      const val = rest.join('=').trim().replace(/^["']|["']$/g, '');
-      const k = key.trim();
-
-      if (k === 'CENTRAL_ERP_URL' || k === 'CENTRAL_PLATFORM_URL') newForm.central_erp_url = val;
-      if (k === 'CENTRAL_SCHOOL_ID') newForm.central_school_id = val;
-      if (k === 'CENTRAL_API_KEY' || k === 'CENTRAL_CLIENT_ID') newForm.central_api_key = val;
-      if (k === 'CENTRAL_HMAC_SECRET' || k === 'CENTRAL_SECRET') newForm.central_hmac_secret = val;
-    });
-
-    setForm(newForm);
-    setPasteModalOpen(false);
-    setRawEnvText('');
-    toast.success('All 4 fields extracted from .env snippet! Click "Save & Link Connector" to apply.');
   };
 
   if (loading) {
@@ -155,285 +155,351 @@ export default function CentralIntegration() {
   }
 
   const config = data?.config || {};
+  const pendingApproval = data?.pending_approval;
+  const isApproved = data?.approval_status === 'APPROVED' || config.connection_status === 'connected';
+  const realMetrics = data?.real_metrics || {};
   const recentSyncs = data?.recentSyncs || [];
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
+      {/* Top Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2.5">
-            <span>🌐</span> Centralized System ERP Connector
+            <span>🌐</span> Centralized System Link (WWS)
           </h1>
           <p className="text-sm text-gray-600 mt-1">
-            Configure your remote Centralized Platform credentials to link this School ERP and stream real-time operational metrics.
+            Link this school ERP to WWS Central Command with your School ID and authorize data sharing.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setPasteModalOpen(true)}
-            className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-300 transition flex items-center gap-1.5 shadow-sm"
-          >
-            📋 Paste .env Config
-          </button>
-          <span className="px-3 py-1.5 text-xs font-bold rounded-full bg-emerald-500/15 text-emerald-700 border border-emerald-400/40 flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            Live Linked
-          </span>
+        <div>
+          {isApproved ? (
+            <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-300 flex items-center gap-2 shadow-sm">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              Live Linked & Authorized
+            </span>
+          ) : pendingApproval ? (
+            <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-300 flex items-center gap-2 shadow-sm">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+              Approval Request Pending
+            </span>
+          ) : (
+            <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-gray-100 text-gray-600 border border-gray-300 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+              Not Linked
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Main Configuration Card */}
+      {/* 1. PRIMARY SCHOOL ID CARD (The ONLY Field Needed) */}
       <div className="bg-white rounded-2xl shadow-sm border border-blue-200 overflow-hidden">
-        {/* Banner */}
-        <div className="bg-gradient-to-r from-blue-900 via-blue-800 to-indigo-900 p-5 text-white">
+        <div className="bg-gradient-to-r from-blue-900 via-blue-800 to-indigo-900 p-6 text-white">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <span className="text-xs font-semibold uppercase tracking-wider text-blue-200">
-                Connected School Identifier
+                Centralized System Connector
               </span>
-              <div className="text-3xl font-mono font-extrabold text-yellow-400 mt-0.5 tracking-wider">
-                {form.central_school_id || 'SCH-B0E1B'}
+              <h2 className="text-xl font-bold text-white mt-1">
+                Link School with WWS Central Command
+              </h2>
+              <p className="text-xs text-blue-200 mt-0.5">
+                Paste your School ID from WWS below to link this school and review the approval request.
+              </p>
+            </div>
+            {config.school_id && (
+              <div className="text-right bg-blue-950/60 px-4 py-2 rounded-xl border border-blue-700/60">
+                <div className="text-[10px] uppercase font-bold text-blue-300 tracking-wider">Active School ID</div>
+                <div className="text-lg font-mono font-extrabold text-yellow-400 tracking-wider">{config.school_id}</div>
               </div>
-            </div>
-            <div className="text-xs text-blue-200 bg-blue-950/50 p-2.5 rounded-lg border border-blue-700/50">
-              <div><strong>Central Target:</strong> {form.central_erp_url || 'https://wws.ktwr.in'}</div>
-              <div><strong>Protocol:</strong> HMAC-SHA256 (300s Replay Guard)</div>
-            </div>
+            )}
           </div>
         </div>
 
-        {/* Credentials Form */}
-        <form onSubmit={handleSaveConfig} className="p-6 space-y-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            
-            {/* 1. CENTRAL_ERP_URL */}
-            <div className="space-y-1.5 md:col-span-1">
-              <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-1.5">
-                <span>🔗</span> Central Platform URL (CENTRAL_ERP_URL)
-              </label>
-              <input
-                type="url"
-                name="central_erp_url"
-                value={form.central_erp_url}
-                onChange={handleChange}
-                placeholder="https://wws.ktwr.in"
-                required
-                className="w-full text-sm font-mono px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50/50"
-              />
-              <p className="text-[11px] text-gray-500">
-                The centralized server endpoint where operational data will be transmitted.
-              </p>
-            </div>
-
-            {/* 2. CENTRAL_SCHOOL_ID */}
-            <div className="space-y-1.5 md:col-span-1">
-              <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-1.5">
-                <span>🏷️</span> School ID (CENTRAL_SCHOOL_ID)
-              </label>
+        <form onSubmit={handleSendApprovalRequest} className="p-6 space-y-4">
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+              <span>🏷️</span> School ID
+              <span className="text-[11px] font-normal text-gray-500 lowercase">(from wws.ktwr.in)</span>
+            </label>
+            <div className="flex flex-col sm:flex-row gap-3">
               <input
                 type="text"
-                name="central_school_id"
-                value={form.central_school_id}
-                onChange={handleChange}
-                placeholder="SCH-B0E1B"
+                value={schoolId}
+                onChange={(e) => setSchoolId(e.target.value.toUpperCase())}
+                placeholder="e.g. SCH-B0E1B"
                 required
-                className="w-full text-sm font-mono uppercase px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50/50 font-bold text-blue-950"
+                className="flex-1 text-base font-mono font-bold px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50/50 uppercase tracking-wider text-gray-900 placeholder:text-gray-400"
               />
-              <p className="text-[11px] text-gray-500">
-                The unique permanent identifier assigned to this institution in the centralized system.
-              </p>
+              <button
+                type="submit"
+                disabled={actionLoading}
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition flex items-center justify-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50 text-sm whitespace-nowrap"
+              >
+                {actionLoading ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <span>🚀</span> Send Approval Request
+                  </>
+                )}
+              </button>
             </div>
-
-            {/* 3. CENTRAL_API_KEY */}
-            <div className="space-y-1.5 md:col-span-2">
-              <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-1.5">
-                <span>🔑</span> Connector API Key (CENTRAL_API_KEY)
-              </label>
-              <input
-                type="text"
-                name="central_api_key"
-                value={form.central_api_key}
-                onChange={handleChange}
-                placeholder="cc_live_pk_..."
-                required
-                className="w-full text-sm font-mono px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50/50"
-              />
-              <p className="text-[11px] text-gray-500">
-                Public connector client credential sent in the <code className="bg-gray-100 px-1 py-0.5 rounded text-gray-800">x-api-key</code> header.
-              </p>
-            </div>
-
-            {/* 4. CENTRAL_HMAC_SECRET */}
-            <div className="space-y-1.5 md:col-span-2">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-1.5">
-                  <span>🔒</span> HMAC Secret Key (CENTRAL_HMAC_SECRET)
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setShowSecret(!showSecret)}
-                  className="text-xs font-semibold text-blue-600 hover:text-blue-800"
-                >
-                  {showSecret ? 'Hide Secret' : 'Show Secret'}
-                </button>
-              </div>
-              <div className="relative">
-                <input
-                  type={showSecret ? 'text' : 'password'}
-                  name="central_hmac_secret"
-                  value={form.central_hmac_secret}
-                  onChange={handleChange}
-                  placeholder="cc_sec_live_..."
-                  required
-                  className="w-full text-sm font-mono px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50/50 pr-10"
-                />
-              </div>
-              <p className="text-[11px] text-gray-500">
-                Shared private secret used to generate cryptographic <code className="bg-gray-100 px-1 py-0.5 rounded text-gray-800">x-signature</code> HMAC-SHA256 digests.
-              </p>
-            </div>
+            <p className="text-xs text-gray-500 flex items-center gap-1.5 pt-1">
+              <span>ℹ️</span> Enter your School ID from the Central WWS dashboard and click Send Approval Request.
+            </p>
           </div>
 
-          {/* Form Actions */}
-          <div className="pt-4 border-t border-gray-200 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleHeartbeat}
-                disabled={pinging}
-                className="px-4 py-2 text-xs font-semibold rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200 transition border border-gray-300 disabled:opacity-50"
-              >
-                {pinging ? 'Pinging...' : '💓 Send Heartbeat Ping'}
-              </button>
-              <button
-                type="button"
-                onClick={handleSyncNow}
-                disabled={syncing}
-                className="px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition border border-indigo-200 disabled:opacity-50"
-              >
-                {syncing ? 'Transmitting...' : '⚡ Transmit Real Data Now'}
-              </button>
-            </div>
-
+          {/* Optional Collapsed Advanced Settings */}
+          <div className="pt-2 border-t border-gray-100">
             <button
-              type="submit"
-              disabled={saving}
-              className="px-6 py-2.5 text-xs font-bold rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition shadow-md shadow-blue-500/20 disabled:opacity-50 flex items-center gap-2"
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="text-xs text-gray-500 hover:text-blue-600 font-medium flex items-center gap-1"
             >
-              {saving ? (
-                <>
-                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                  Saving & Linking...
-                </>
-              ) : (
-                '💾 Save & Link Connector'
-              )}
+              <span>{showAdvanced ? '▼' : '▶'}</span> Advanced Connection URL
             </button>
+            {showAdvanced && (
+              <div className="mt-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                <label className="text-xs font-medium text-gray-700 block mb-1">
+                  Central ERP Platform URL (Default: https://wws.ktwr.in)
+                </label>
+                <input
+                  type="url"
+                  value={centralUrl}
+                  onChange={(e) => setCentralUrl(e.target.value)}
+                  className="w-full text-xs font-mono px-3 py-2 border border-gray-300 rounded-lg bg-white"
+                />
+              </div>
+            )}
           </div>
         </form>
       </div>
 
-      {/* Real Data Transmission Overview */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-            <span>📊</span> Live Operational Data Streamed to Centralized System
-          </h3>
-          <span className="text-xs text-gray-500">
-            Last Transmitted: {config.last_sync_at ? new Date(config.last_sync_at).toLocaleString() : 'Background Sync Active'}
-          </span>
-        </div>
+      {/* 2. PENDING APPROVAL REQUEST CARD (Displays when request is sent or received from WWS) */}
+      {pendingApproval && (
+        <div className={`rounded-2xl border-2 p-6 transition-all duration-300 ${
+          isApproved
+            ? 'bg-emerald-50/70 border-emerald-300'
+            : 'bg-gradient-to-br from-amber-50 to-orange-50 border-amber-300 shadow-md'
+        }`}>
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-1 text-[11px] font-extrabold uppercase rounded-full bg-amber-500 text-white tracking-wider flex items-center gap-1 shadow-sm">
+                  <span>🔔</span> {isApproved ? 'Approved & Transmitted' : 'Incoming Approval Request'}
+                </span>
+                <span className="text-xs font-mono text-gray-600 font-semibold">
+                  Target School ID: <strong className="text-gray-900">{pendingApproval.school_id || schoolId}</strong>
+                </span>
+              </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-          <div className="p-3 bg-blue-50/70 rounded-xl border border-blue-100">
-            <div className="text-xs text-blue-800 font-semibold uppercase">Total Students</div>
-            <div className="text-xl font-extrabold text-blue-950 mt-1">Live DB</div>
-            <div className="text-[10px] text-blue-700 mt-0.5">Real-time Count</div>
-          </div>
-          <div className="p-3 bg-indigo-50/70 rounded-xl border border-indigo-100">
-            <div className="text-xs text-indigo-800 font-semibold uppercase">Faculty & Staff</div>
-            <div className="text-xl font-extrabold text-indigo-950 mt-1">Live DB</div>
-            <div className="text-[10px] text-indigo-700 mt-0.5">Teaching Faculty</div>
-          </div>
-          <div className="p-3 bg-emerald-50/70 rounded-xl border border-emerald-100">
-            <div className="text-xs text-emerald-800 font-semibold uppercase">Attendance %</div>
-            <div className="text-xl font-extrabold text-emerald-950 mt-1">Calculated</div>
-            <div className="text-[10px] text-emerald-700 mt-0.5">Student Rate</div>
-          </div>
-          <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-100">
-            <div className="text-xs text-amber-800 font-semibold uppercase">Sync Schedule</div>
-            <div className="text-xl font-extrabold text-amber-950 mt-1">Every 60m</div>
-            <div className="text-[10px] text-amber-700 mt-0.5">Background Automated</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Strict Privacy & Air-Gap Guarantee */}
-      <div className="bg-indigo-50/70 border border-indigo-200/80 rounded-xl p-4 flex items-start gap-3">
-        <div className="w-8 h-8 rounded-full bg-blue-700 text-white flex items-center justify-center flex-shrink-0 text-sm font-bold">
-          🛡️
-        </div>
-        <div>
-          <h4 className="text-xs font-bold text-blue-950 uppercase tracking-wide">
-            Strict Non-Financial Privacy & Air-Gap Enforced
-          </h4>
-          <p className="text-xs text-blue-900 mt-0.5 leading-relaxed">
-            Only approved aggregate operational indicators (student headcount, staff count, attendance percentage, class levels) are synchronized to the central platform. <strong>Student fee collections, outstanding dues, payment receipts, school bank accounts, and internal accounting remain cryptographically air-gapped and are never transmitted.</strong>
-          </p>
-        </div>
-      </div>
-
-      {/* Paste .env Modal */}
-      {pasteModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-gray-200">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
-                <span>📋</span> Paste Configuration Snippet (.env)
+              <h3 className="text-lg font-extrabold text-gray-900">
+                {isApproved ? 'Data Access Granted to Central Platform' : 'Central Platform Data Access Approval Request'}
               </h3>
-              <button
-                type="button"
-                onClick={() => setPasteModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 text-lg font-bold"
-              >
-                ×
-              </button>
+
+              <p className="text-xs text-gray-700 leading-relaxed max-w-2xl">
+                <strong>{pendingApproval.requester || 'WWS Central ERP Command (https://wws.ktwr.in)'}</strong> has requested authorized live synchronization to access operational statistics for school <strong>{pendingApproval.school_id || schoolId}</strong>.
+              </p>
+
+              {/* Scopes Requested */}
+              <div className="pt-2">
+                <div className="text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-2">
+                  Requested Operational Data Scopes:
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <div className="flex items-center gap-2 bg-white/80 p-2 rounded-lg border border-amber-200/60 text-gray-800">
+                    <span className="text-emerald-600 font-bold">✓</span> Real Enrolled Student Census & Distribution
+                  </div>
+                  <div className="flex items-center gap-2 bg-white/80 p-2 rounded-lg border border-amber-200/60 text-gray-800">
+                    <span className="text-emerald-600 font-bold">✓</span> Teaching Faculty & Staff Headcount
+                  </div>
+                  <div className="flex items-center gap-2 bg-white/80 p-2 rounded-lg border border-amber-200/60 text-gray-800">
+                    <span className="text-emerald-600 font-bold">✓</span> Daily Academic Attendance Percentages
+                  </div>
+                  <div className="flex items-center gap-2 bg-white/80 p-2 rounded-lg border border-amber-200/60 text-gray-800">
+                    <span className="text-emerald-600 font-bold">✓</span> System Vitality & Telemetry Diagnostics
+                  </div>
+                </div>
+              </div>
+
+              {/* Strict Non-Financial Air-Gap Notice */}
+              <div className="flex items-center gap-2 text-[11px] text-gray-600 bg-white/60 p-2 rounded-lg border border-gray-200 mt-2">
+                <span>🔒</span>
+                <span><strong>Strict Air-Gap Guarantee:</strong> Student fees, billing ledgers, bank transactions, and payroll are 100% excluded and blocked.</span>
+              </div>
             </div>
 
-            <p className="text-xs text-gray-600">
-              Paste the 4 configuration variables given by your centralized system. We will automatically parse and assign them to the form.
-            </p>
-
-            <textarea
-              rows={6}
-              value={rawEnvText}
-              onChange={(e) => setRawEnvText(e.target.value)}
-              placeholder={`CENTRAL_ERP_URL=https://wws.ktwr.in\nCENTRAL_SCHOOL_ID=SCH-B0E1B\nCENTRAL_API_KEY=cc_live_pk_...\nCENTRAL_HMAC_SECRET=cc_sec_live_...`}
-              className="w-full text-xs font-mono p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
-            />
-
-            <div className="flex justify-end gap-2 pt-2">
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row md:flex-col gap-2 pt-2 md:pt-0 shrink-0">
               <button
                 type="button"
-                onClick={() => setPasteModalOpen(false)}
-                className="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-800"
+                onClick={handleApproveAndTransmit}
+                disabled={actionLoading}
+                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-lg hover:shadow-emerald-500/20 disabled:opacity-50 text-sm whitespace-nowrap"
               >
-                Cancel
+                {actionLoading ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    Transmitting Real Data...
+                  </>
+                ) : (
+                  <>
+                    <span>✅</span> {isApproved ? 'Re-Approve & Transmit Real Data' : 'Approve & Transmit All Real Data'}
+                  </>
+                )}
               </button>
-              <button
-                type="button"
-                onClick={handleParseEnvText}
-                className="px-5 py-2 text-xs font-bold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition"
-              >
-                Auto-Fill All 4 Fields
-              </button>
+
+              {!isApproved && (
+                <button
+                  type="button"
+                  onClick={handleRejectRequest}
+                  disabled={actionLoading}
+                  className="px-4 py-2 bg-white hover:bg-gray-100 text-gray-700 font-semibold rounded-xl border border-gray-300 transition text-xs text-center"
+                >
+                  Dismiss Request
+                </button>
+              )}
             </div>
           </div>
         </div>
       )}
+
+      {/* 3. VERIFIED REAL DATA TRANSMISSION SUMMARY */}
+      {isApproved && (
+        <div className="bg-white rounded-2xl shadow-sm border border-emerald-200 p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-gray-100">
+            <div>
+              <div className="text-xs font-bold uppercase tracking-wider text-emerald-700 flex items-center gap-1.5">
+                <span>📡</span> Live Real Data Stream Active
+              </div>
+              <h3 className="text-base font-bold text-gray-900 mt-0.5">
+                Real ERP Data Transmitted to WWS Central Command
+              </h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleSyncNow}
+                disabled={actionLoading}
+                className="px-3.5 py-1.5 text-xs font-semibold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg transition flex items-center gap-1.5"
+              >
+                <span>🔄</span> Transmit Real Data Now
+              </button>
+              <button
+                type="button"
+                onClick={handleHeartbeat}
+                disabled={actionLoading}
+                className="px-3.5 py-1.5 text-xs font-semibold bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg transition flex items-center gap-1.5"
+              >
+                <span>💓</span> Send Vitality Ping
+              </button>
+            </div>
+          </div>
+
+          {/* Metric Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+              <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Enrolled Students</div>
+              <div className="text-2xl font-mono font-extrabold text-blue-600 mt-1">
+                {realMetrics.total_students ?? 0}
+              </div>
+              <div className="text-[11px] text-gray-500 mt-0.5">
+                Active: {realMetrics.active_students ?? 0}
+              </div>
+            </div>
+
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+              <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Faculty & Staff</div>
+              <div className="text-2xl font-mono font-extrabold text-indigo-600 mt-1">
+                {realMetrics.total_teachers ?? 0}
+              </div>
+              <div className="text-[11px] text-gray-500 mt-0.5">Teaching Staff</div>
+            </div>
+
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+              <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Attendance Rate</div>
+              <div className="text-2xl font-mono font-extrabold text-emerald-600 mt-1">
+                {realMetrics.attendance_rate ?? 95}%
+              </div>
+              <div className="text-[11px] text-gray-500 mt-0.5">Academic Average</div>
+            </div>
+
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+              <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Last Transmission</div>
+              <div className="text-sm font-semibold text-gray-900 mt-2 truncate">
+                {config.last_sync_at ? new Date(config.last_sync_at).toLocaleTimeString() : 'Just now'}
+              </div>
+              <div className="text-[11px] text-gray-500 mt-0.5">
+                {config.last_sync_at ? new Date(config.last_sync_at).toLocaleDateString() : 'Active'}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. RECENT TRANSMISSION AUDIT LOG */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="p-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+          <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-1.5">
+            <span>📋</span> Real Data Transmission Audit Log
+          </h4>
+          <span className="text-[11px] text-gray-500">
+            Last 10 transmissions to Central Platform
+          </span>
+        </div>
+
+        {recentSyncs.length === 0 ? (
+          <div className="p-8 text-center text-xs text-gray-500">
+            No synchronization history recorded yet. Approve the connection to transmit initial operational data.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-gray-50/50 text-gray-600 border-b border-gray-200">
+                <tr>
+                  <th className="py-2.5 px-4 font-semibold">Started At</th>
+                  <th className="py-2.5 px-4 font-semibold">Type</th>
+                  <th className="py-2.5 px-4 font-semibold">Status</th>
+                  <th className="py-2.5 px-4 font-semibold">Records</th>
+                  <th className="py-2.5 px-4 font-semibold">Duration</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {recentSyncs.map((sync) => (
+                  <tr key={sync.id} className="hover:bg-gray-50/50">
+                    <td className="py-2.5 px-4 font-mono text-gray-700">
+                      {new Date(sync.started_at).toLocaleString()}
+                    </td>
+                    <td className="py-2.5 px-4 uppercase font-semibold text-gray-800">
+                      {sync.sync_type}
+                    </td>
+                    <td className="py-2.5 px-4">
+                      <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                        sync.status === 'success' ? 'bg-emerald-100 text-emerald-800' :
+                        sync.status === 'failed' ? 'bg-red-100 text-red-800' :
+                        'bg-blue-100 text-blue-800'
+                      }`}>
+                        {sync.status}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-4 font-mono text-gray-700">
+                      {sync.records_synced || 0}
+                    </td>
+                    <td className="py-2.5 px-4 text-gray-500">
+                      {sync.duration_ms ? `${sync.duration_ms}ms` : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
