@@ -4,6 +4,7 @@ const { Op } = require('sequelize');
 const { User } = require('../models');
 const { protect, authorize } = require('../middleware/auth');
 const { sendCredentialsEmail } = require('../services/mailService');
+const { credentialUpdateLimiter } = require('../middleware/rateLimiters');
 
 // ── Role Definitions ─────────────────────────────────────────────────────────
 const ADMIN_ROLES = ['admin', 'admin2'];
@@ -90,7 +91,7 @@ router.get('/students', protect, authorize(...ALL_ALLOWED_ROLES), async (req, re
 
 // ── PUT /api/credentials/:id ────────────────────────────────────────────────
 // Accessible to: admin, admin2, fee_collector (with strict cross-role checks)
-router.put('/:id', protect, authorize(...ALL_ALLOWED_ROLES), async (req, res) => {
+router.put('/:id', credentialUpdateLimiter, protect, authorize(...ALL_ALLOWED_ROLES), async (req, res) => {
   try {
     const { id } = req.params;
     const { email, password } = req.body;

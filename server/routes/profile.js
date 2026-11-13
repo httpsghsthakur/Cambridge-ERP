@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const sharp = require('sharp');
 const { protect } = require('../middleware/auth');
-const { uploadAvatar } = require('../middleware/upload');
+const { uploadAvatar, validateImageMagicBytes } = require('../middleware/upload');
 const { User, Student, Teacher, Session } = require('../models');
 
 // Ensure uploads directory exists
@@ -97,6 +97,11 @@ router.post('/avatar', protect, (req, res) => {
       return res.status(400).json({ message: 'No file uploaded.' });
     }
 
+    // Binary Magic Number validation — strictly verify real image header
+    if (!validateImageMagicBytes(req.file.buffer)) {
+      return res.status(400).json({ message: 'Invalid image signature. Executable polyglot or corrupted file rejected.' });
+    }
+
     try {
       const user = await User.findByPk(req.user.id);
       if (!user) {
@@ -117,10 +122,11 @@ router.post('/avatar', protect, (req, res) => {
         .webp({ quality: 80 })
         .toFile(targetPath);
 
-      // Delete old avatar file if it exists
+      // Path traversal defense: strictly sanitize old file basename
       if (user.profile_photo) {
-        const oldPath = path.join(__dirname, '..', 'public', user.profile_photo);
-        if (fs.existsSync(oldPath)) {
+        const safeBaseName = path.basename(user.profile_photo);
+        const oldPath = path.join(AVATAR_DIR, safeBaseName);
+        if (oldPath.startsWith(AVATAR_DIR) && fs.existsSync(oldPath)) {
           fs.unlinkSync(oldPath);
         }
       }

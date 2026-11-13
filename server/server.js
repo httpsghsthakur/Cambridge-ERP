@@ -13,6 +13,7 @@ const hpp = require('hpp');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const { sequelize } = require('./models');
+const { protect, isSuperAdmin } = require('./middleware/auth');
 const errorHandler = require('./middleware/errorHandler');
 const auditLogger = require('./middleware/auditLogger');
 const securityLogger = require('./middleware/securityLogger');
@@ -52,15 +53,27 @@ app.use(helmet({
       connectSrc: ["'self'", "https://fcm.googleapis.com", "https://*.push.services.mozilla.com"],
       workerSrc: ["'self'"],
       childSrc: ["'self'", "blob:"],
+      frameAncestors: ["'none'"],
+      objectSrc: ["'none'"],
     },
   },
   crossOriginEmbedderPolicy: false,
+  xFrameOptions: { action: 'deny' },
+  xContentTypeOptions: true,
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
   hsts: {
     maxAge: 31536000,
     includeSubDomains: true,
     preload: true
   }
 }));
+
+// Additional Security Headers (Permissions-Policy & Cross-Domain Policy)
+app.use((req, res, next) => {
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
+  next();
+});
 
 // ── Global Rate Limiter ────────────────────────────────────────────────────────
 app.use(rateLimit({
@@ -150,8 +163,8 @@ app.use('/api/achievements', require('./routes/achievements'));
 app.use('/api/logs', require('./routes/logs'));
 app.use('/api/security-logs', require('./routes/securityLogs'));
 
-// ── Emergency Database Fix Route (For Hostinger) ─────────────────────────────
-app.get('/api/fix-db', async (req, res) => {
+// ── Emergency Database Fix Route (Restricted strictly to Super Admin) ─────────
+app.get('/api/fix-db', protect, isSuperAdmin, async (req, res) => {
   try {
     await sequelize.sync({ alter: true });
     const { Session } = require('./models');
@@ -163,9 +176,10 @@ app.get('/api/fix-db', async (req, res) => {
     } else {
       msg += 'Session already exists.';
     }
-    res.send(`<h1>✅ Success!</h1><p>${msg}</p><p>You can now go back to the ERP.</p>`);
+    res.json({ success: true, message: msg });
   } catch (err) {
-    res.status(500).send(`<h1>❌ Error!</h1><pre>${err.stack}</pre>`);
+    console.error('[DATABASE FIX ERROR]', err);
+    res.status(500).json({ success: false, message: 'Database synchronization failed.' });
   }
 });
 

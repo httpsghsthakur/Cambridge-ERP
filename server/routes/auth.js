@@ -1,10 +1,26 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const rateLimit = require('express-rate-limit');
+
+// Static dummy bcrypt hash used to normalize execution time against timing enumeration attacks
+const DUMMY_BCRYPT_HASH = '$2a$12$e80yq7Kj4G1XJvM1jB70w.nL64Z28vI8e31k/8uQ4uVzO50qX5D9m';
+
+const getJwtSecret = () => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('[FATAL SECURITY] JWT_SECRET must be explicitly configured in production.');
+    }
+    return 'dev-secret-key-cambridge-erp-auth-32chars';
+  }
+  return secret;
+};
 const { User, Student, Teacher } = require('../models');
 const { protect, authorize, isSuperAdmin } = require('../middleware/auth');
 const { validateLogin, validateRegister, validateChangePassword } = require('../middleware/validator');
+const { passwordChangeLimiter } = require('../middleware/rateLimiters');
 
 // (M7 fix) — all roles including student and parent can change their own password
 const PASSWORD_CHANGE_ROLES = ['admin', 'admin2', 'teacher', 'fee_collector', 'student', 'parent'];
@@ -39,7 +55,7 @@ const registerLimiter = rateLimit({
 });
 
 const signToken = (id) =>
-  jwt.sign({ id }, process.env.JWT_SECRET || 'fallback-secret-change-me', { expiresIn: process.env.JWT_EXPIRE || '7d' });
+  jwt.sign({ id }, getJwtSecret(), { expiresIn: process.env.JWT_EXPIRE || '7d' });
 
 // POST /api/auth/login
 router.post('/login', loginLimiter, validateLogin, async (req, res) => {
@@ -65,13 +81,10 @@ router.post('/login', loginLimiter, validateLogin, async (req, res) => {
       user = await User.findOne({ where: { email } });
     }
 
-    if (!user) {
-      console.log(`[LOGIN FAILED] Email not found in DB: "${email}"`);
-      return res.status(401).json({ message: 'Invalid email or password.' });
-    }
-
-    if (!user.is_active) {
-      console.log(`[LOGIN FAILED] User is disabled in DB: "${email}"`);
+    if (!user || !user.is_active) {
+      // Mitigate timing enumeration attack: execute dummy hash compare so response duration is identical
+      await bcrypt.compare(password, DUMMY_BCRYPT_HASH).catch(() => {});
+      console.log(`[LOGIN FAILED] Invalid credentials for: "${email}"`);
       return res.status(401).json({ message: 'Invalid email or password.' });
     }
 
@@ -141,8 +154,8 @@ router.post('/login', loginLimiter, validateLogin, async (req, res) => {
       }
     });
   } catch (err) {
-    console.error('[LOGIN CRASH]', err.message, err.stack);
-    res.status(500).json({ message: 'Login failed: ' + err.message });
+    console.error('[LOGIN ERROR]', err.message);
+    res.status(500).json({ message: 'Authentication service temporarily unavailable. Please try again.' });
   }
 });
 
@@ -214,7 +227,7 @@ router.post('/register', protect, isSuperAdmin, registerLimiter, validateRegiste
 });
 
 // PUT /api/auth/change-password — (M7 fix) all authenticated users can change password
-router.put('/change-password', protect, authorize(...PASSWORD_CHANGE_ROLES), validateChangePassword, async (req, res) => {
+router.put('/change-password', passwordChangeLimiter, protect, authorize(...PASSWORD_CHANGE_ROLES), validateChangePassword, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     if (!currentPassword || !newPassword || newPassword.length < 6) {

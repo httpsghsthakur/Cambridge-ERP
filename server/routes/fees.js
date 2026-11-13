@@ -292,13 +292,19 @@ const buildUpdatedBreakdownWithTx = (feeRecord, {
   };
 };
 
-// Shared IDOR guard for parent/student fee endpoints
+// Shared IDOR guard for fee endpoints (Strict Role-Based Access Control)
 const hasStudentFeeAccess = (req, targetStudentId) => {
+  // 1. Authorized financial administration roles
+  if (['admin', 'admin2', 'fee_collector'].includes(req.user.role)) {
+    return true;
+  }
+  // 2. Parents and Students can ONLY access their own linked student record
   if (req.user.role === 'parent' || req.user.role === 'student') {
     const linkedId = req.user.linked_student_id || req.user.linkedStudent?.id;
     return Boolean(linkedId && linkedId === parseInt(targetStudentId, 10));
   }
-  return true;
+  // 3. Teachers and all other unauthorized roles are strictly denied
+  return false;
 };
 
 // GET /api/fees/student/:studentId — (H2 fix) improved IDOR check
