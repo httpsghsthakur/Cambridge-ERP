@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import API from '../../utils/api';
 import Modal from '../../components/common/Modal';
 import SearchBar from '../../components/common/SearchBar';
@@ -10,6 +11,7 @@ import { CLASSES, SECTIONS } from '../../constants/roles';
 import toast from 'react-hot-toast';
 
 export default function Students() {
+  const navigate = useNavigate();
   const [students, setStudents]   = useState([]);
   const [loading, setLoading]     = useState(true);
   const [search, setSearch]       = useState('');

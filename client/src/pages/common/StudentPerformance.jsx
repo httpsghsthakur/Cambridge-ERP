@@ -1,23 +1,28 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import API from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
+import { useSettings } from '../../context/SettingsContext';
 import Avatar from '../../components/common/Avatar';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
-import ProgressBar from '../../components/common/ProgressBar';
 import Modal from '../../components/common/Modal';
 import {
   formatDate,
   getGradeBg,
   getGradeColor,
-  attendanceBg,
   getAttendancePercColor,
   getAttendanceBarColor,
 } from '../../utils/helpers';
+import {
+  generateConsolidatedMarksheet,
+  generateComprehensivePerformanceReport,
+  generateReportCard,
+} from '../../utils/pdfGenerator';
 import { CLASSES, SECTIONS } from '../../constants/roles';
 import toast from 'react-hot-toast';
 
 export default function StudentPerformance() {
   const { user } = useAuth();
+  const { settings } = useSettings() || {};
   const isTeacher = user?.role === 'teacher';
 
   // Data states
@@ -43,8 +48,9 @@ export default function StudentPerformance() {
   const [selectedStudentId, setSelectedStudentId] = useState(null);
   const [detailData, setDetailData] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'attendance' | 'marks' | 'achievements' | 'info'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'marks' | 'attendance' | 'achievements' | 'info'
   const [selectedExamId, setSelectedExamId] = useState(null);
+  const [pdfGenerating, setPdfGenerating] = useState(false);
 
   // Load Teacher's Allowed Classes
   useEffect(() => {
@@ -139,6 +145,59 @@ export default function StudentPerformance() {
   // Available classes for dropdown
   const availableClasses = isTeacher ? allowedClasses : CLASSES;
 
+  // ── PDF Actions ─────────────────────────────────────────────────────────────
+  const handleDownloadAllMarksheets = async () => {
+    if (!detailData) return;
+    setPdfGenerating(true);
+    try {
+      generateConsolidatedMarksheet(detailData.student, detailData, settings);
+      toast.success('Consolidated marksheet for all exams downloaded!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to generate marksheet PDF.');
+    } finally {
+      setPdfGenerating(false);
+    }
+  };
+
+  const handleDownloadFullReport = async () => {
+    if (!detailData) return;
+    setPdfGenerating(true);
+    try {
+      generateComprehensivePerformanceReport(detailData.student, detailData, settings);
+      toast.success('Comprehensive student performance report downloaded!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to generate performance report PDF.');
+    } finally {
+      setPdfGenerating(false);
+    }
+  };
+
+  const handleDownloadSingleExam = (exam) => {
+    if (!detailData || !exam) return;
+    try {
+      generateReportCard(detailData.student, exam);
+      toast.success(`Marksheet for ${exam.exam_name} downloaded!`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to generate exam marksheet.');
+    }
+  };
+
+  // Quick download from list row
+  const handleQuickDownloadMarksheet = async (e, studentId) => {
+    e.stopPropagation();
+    const toastId = toast.loading('Generating consolidated marksheet...');
+    try {
+      const res = await API.get(`/students/${studentId}/performance`);
+      generateConsolidatedMarksheet(res.data.student, res.data, settings);
+      toast.success('Marksheet downloaded!', { id: toastId });
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to download marksheet', { id: toastId });
+    }
+  };
+
   return (
     <div className="space-y-6 pb-12">
       {/* Header Banner */}
@@ -157,10 +216,10 @@ export default function StudentPerformance() {
               )}
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-              Student Performance &amp; Insights
+              Student Performance &amp; Academic Profiles
             </h1>
             <p className="text-slate-300 text-sm mt-1 max-w-2xl">
-              Track attendance, examination scores, subject breakdowns, and achievements in detail for every student.
+              Search students by name or ID to inspect examination history, tests, attendance progression, and download official marksheets &amp; reports.
             </p>
           </div>
 
@@ -293,17 +352,17 @@ export default function StudentPerformance() {
         </div>
       </div>
 
-      {/* Filters and Search Bar */}
+      {/* Search and Filters Bar */}
       <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm space-y-3">
         <div className="flex flex-col md:flex-row gap-3">
-          {/* Search box */}
+          {/* Search box - Supports Name and Student ID */}
           <div className="flex-1 relative">
             <svg className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
               type="text"
-              placeholder="Search by student name, roll number, or student ID..."
+              placeholder="Search student by name, student ID, roll number, or parent name..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:bg-white focus:border-blue-500 transition"
@@ -411,7 +470,7 @@ export default function StudentPerformance() {
           <p className="text-sm text-gray-500 mt-1 max-w-md mx-auto">
             {isTeacher && allowedClasses.length > 0
               ? 'No students found matching your filters in your assigned classes.'
-              : 'Try adjusting your search criteria or class filters.'}
+              : 'Try searching by a different student name or registration ID.'}
           </p>
         </div>
       ) : viewMode === 'table' ? (
@@ -427,7 +486,7 @@ export default function StudentPerformance() {
                   <th className="py-3.5 px-4">Academic Score</th>
                   <th className="py-3.5 px-4">Overall Grade</th>
                   <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4 text-right">Action</th>
+                  <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 text-sm">
@@ -455,7 +514,7 @@ export default function StudentPerformance() {
                               )}
                             </div>
                             <div className="text-xs text-gray-400 font-mono">
-                              {s.student_id} {s.parent_name ? `· Parent: ${s.parent_name}` : ''}
+                              ID: {s.student_id} {s.parent_name ? `· Parent: ${s.parent_name}` : ''}
                             </div>
                           </div>
                         </div>
@@ -543,20 +602,31 @@ export default function StudentPerformance() {
                         )}
                       </td>
 
-                      {/* Action */}
+                      {/* Actions */}
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleViewDetail(s.id);
-                          }}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition"
-                        >
-                          <span>View Details</span>
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={(e) => handleQuickDownloadMarksheet(e, s.id)}
+                            className="p-1.5 rounded-lg bg-gray-100 hover:bg-slate-800 hover:text-white text-gray-600 transition"
+                            title="Download Consolidated Marksheet PDF"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewDetail(s.id);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition"
+                          >
+                            <span>View Details</span>
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -590,7 +660,7 @@ export default function StudentPerformance() {
                         <h4 className="font-bold text-gray-900 leading-snug">
                           {s.first_name} {s.last_name}
                         </h4>
-                        <p className="text-xs text-gray-400 font-mono">{s.student_id}</p>
+                        <p className="text-xs text-gray-400 font-mono">ID: {s.student_id}</p>
                       </div>
                     </div>
                     {acad?.overall_grade && (
@@ -645,9 +715,15 @@ export default function StudentPerformance() {
                 </div>
 
                 <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                  <span className="text-xs text-gray-400">
-                    {s.parent_name ? `Parent: ${s.parent_name}` : 'Click for dossier'}
-                  </span>
+                  <button
+                    onClick={(e) => handleQuickDownloadMarksheet(e, s.id)}
+                    className="text-xs text-gray-500 hover:text-blue-600 font-medium inline-flex items-center gap-1"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Marksheet PDF
+                  </button>
                   <span className="text-xs font-semibold text-blue-600 hover:text-blue-700 inline-flex items-center gap-1">
                     Details →
                   </span>
@@ -663,7 +739,7 @@ export default function StudentPerformance() {
         <Modal
           isOpen={Boolean(selectedStudentId)}
           onClose={closeDetail}
-          title={detailData ? `${detailData.student.first_name} ${detailData.student.last_name} — Performance Profile` : 'Student Performance'}
+          title={detailData ? `${detailData.student.first_name} ${detailData.student.last_name} — Comprehensive Dossier` : 'Student Performance'}
           size="xl"
         >
           {detailLoading || !detailData ? (
@@ -673,9 +749,9 @@ export default function StudentPerformance() {
             </div>
           ) : (
             <div className="space-y-5 p-1 sm:p-2">
-              {/* Profile Card Header */}
-              <div className="bg-gradient-to-r from-slate-900 to-blue-950 text-white rounded-2xl p-5 shadow-sm">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              {/* Profile Card Header with Action Buttons */}
+              <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 text-white rounded-2xl p-5 shadow-sm">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
                     <Avatar name={`${detailData.student.first_name} ${detailData.student.last_name}`} size="lg" />
                     <div>
@@ -684,7 +760,7 @@ export default function StudentPerformance() {
                           {detailData.student.first_name} {detailData.student.last_name}
                         </h3>
                         <span className="px-2 py-0.5 text-xs rounded bg-blue-500/30 text-blue-200 border border-blue-400/30 font-semibold">
-                          {detailData.student.class} - {detailData.student.section}
+                          Class {detailData.student.class} - {detailData.student.section}
                         </span>
                       </div>
                       <p className="text-xs text-slate-300 font-mono mt-0.5">
@@ -705,7 +781,7 @@ export default function StudentPerformance() {
                   </div>
 
                   {/* Quick KPIs */}
-                  <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md p-3 rounded-xl border border-white/10 self-start sm:self-auto">
+                  <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md p-3 rounded-xl border border-white/10 self-start lg:self-auto">
                     <div className="text-center px-2">
                       <div className={`text-lg font-extrabold ${getAttendancePercColor(detailData.attendance.percentage)}`}>
                         {detailData.attendance.percentage}%
@@ -728,13 +804,48 @@ export default function StudentPerformance() {
                     </div>
                   </div>
                 </div>
+
+                {/* PDF Action Buttons Bar */}
+                <div className="mt-4 pt-4 border-t border-white/10 flex flex-wrap items-center justify-between gap-3">
+                  <div className="text-xs text-slate-300">
+                    <span>Official Documents &amp; Academic Records Export</span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Download Marksheet of All Exams */}
+                    <button
+                      onClick={handleDownloadAllMarksheets}
+                      disabled={pdfGenerating}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-sm disabled:opacity-50"
+                      title="Download Official Consolidated Marksheet of All Exams"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span>Download Marksheet (All Exams)</span>
+                    </button>
+
+                    {/* Download Performance Report PDF */}
+                    <button
+                      onClick={handleDownloadFullReport}
+                      disabled={pdfGenerating}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-sm disabled:opacity-50"
+                      title="Download Full Student Performance Evaluation Dossier"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span>Download Report PDF</span>
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Navigation Tabs */}
               <div className="flex items-center gap-2 border-b border-gray-200 overflow-x-auto text-sm pb-px">
                 {[
                   { id: 'overview', label: '📊 Overview & Standing' },
-                  { id: 'marks', label: `📝 Examination Marks (${detailData.academics.total_exams})` },
+                  { id: 'marks', label: `📝 Examination Marks & Tests (${detailData.academics.total_exams})` },
                   { id: 'attendance', label: `📅 Attendance Details (${detailData.attendance.percentage}%)` },
                   { id: 'achievements', label: `🏆 Achievements (${detailData.achievements.length})` },
                   { id: 'info', label: '👤 Profile & Admin' },
@@ -756,6 +867,30 @@ export default function StudentPerformance() {
               {/* TAB 1: OVERVIEW */}
               {activeTab === 'overview' && (
                 <div className="space-y-4">
+                  {/* Quick Export Alert Banner */}
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h4 className="text-sm font-bold text-blue-900">Official Student Dossier Ready</h4>
+                      <p className="text-xs text-blue-700 mt-0.5">
+                        Download a consolidated transcript covering all exams and tests or the complete performance evaluation report.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleDownloadAllMarksheets}
+                        className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition whitespace-nowrap shadow-sm"
+                      >
+                        📄 Download Marksheet (All Exams)
+                      </button>
+                      <button
+                        onClick={handleDownloadFullReport}
+                        className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition whitespace-nowrap shadow-sm"
+                      >
+                        📊 Download Report PDF
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Attendance Health Alert */}
                   {detailData.attendance.percentage < 75 && detailData.attendance.total_working_days > 0 && (
                     <div className="bg-rose-50 border border-rose-200 rounded-xl p-3.5 flex items-start gap-3">
@@ -879,10 +1014,27 @@ export default function StudentPerformance() {
                 <div className="space-y-4">
                   {detailData.academics.exams.length === 0 ? (
                     <div className="text-center py-12 text-gray-400 bg-gray-50 rounded-xl">
-                      <p className="text-sm">No exam marks entered for this student yet.</p>
+                      <p className="text-sm">No exam marks or tests entered for this student yet.</p>
                     </div>
                   ) : (
                     <>
+                      {/* Top Action Ribbon for Marksheets */}
+                      <div className="bg-slate-50 border border-gray-200 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-gray-700">All Exams Recorded: {detailData.academics.exams.length}</span>
+                          <span className="text-xs text-gray-400">· Average: {detailData.academics.average_percentage}%</span>
+                        </div>
+                        <button
+                          onClick={handleDownloadAllMarksheets}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition shadow-sm self-start sm:self-auto"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          Download Marksheet (All Exams Till Now)
+                        </button>
+                      </div>
+
                       {/* Exam Selector Pills */}
                       <div className="flex items-center gap-2 overflow-x-auto pb-1">
                         {detailData.academics.exams.map((exam) => (
@@ -903,12 +1055,12 @@ export default function StudentPerformance() {
                       {/* Active Exam Card */}
                       {activeExam && (
                         <div className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
-                          <div className="bg-slate-50 border-b border-gray-200 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div className="bg-slate-50 border-b border-gray-200 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                             <div>
                               <div className="flex items-center gap-2">
                                 <h4 className="font-bold text-gray-900 text-base">{activeExam.exam_name}</h4>
                                 <span className="px-2 py-0.5 text-xs rounded bg-blue-100 text-blue-700 font-semibold uppercase">
-                                  {activeExam.exam_type || 'Examination'}
+                                  {activeExam.exam_type?.replace('_', ' ') || 'Examination'}
                                 </span>
                               </div>
                               <p className="text-xs text-gray-500 mt-0.5">
@@ -926,6 +1078,17 @@ export default function StudentPerformance() {
                               <span className={`px-3 py-1.5 text-sm font-extrabold rounded-xl ${getGradeBg(activeExam.grade)}`}>
                                 Grade {activeExam.grade}
                               </span>
+
+                              {/* Download single exam report */}
+                              <button
+                                onClick={() => handleDownloadSingleExam(activeExam)}
+                                className="p-2 rounded-xl bg-white border border-gray-200 hover:bg-blue-50 hover:border-blue-300 text-blue-600 transition shadow-sm"
+                                title="Download Report Card for this Exam"
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                              </button>
                             </div>
                           </div>
 
