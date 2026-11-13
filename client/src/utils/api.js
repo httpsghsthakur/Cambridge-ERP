@@ -20,16 +20,29 @@ API.interceptors.request.use(config => {
   return config;
 });
 
-// Auto-logout on 401
+// Intercept 423 (Service Suspended) and 401 (Unauthorized)
 API.interceptors.response.use(
   res => res,
   err => {
+    // 423 Locked / Suspended
+    if (err.response?.status === 423) {
+      if (err.response.data) {
+        try {
+          sessionStorage.setItem('erp_suspension_info', JSON.stringify(err.response.data));
+        } catch (e) {}
+      }
+      if (window.location.pathname !== '/suspended') {
+        window.location.href = '/suspended';
+      }
+    }
+
+    // 401 Unauthorized
     if (err.response?.status === 401) {
-      // If unauthorized, redirect to login (unless already there)
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
     }
+
     return Promise.reject(err);
   }
 );

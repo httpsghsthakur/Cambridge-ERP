@@ -15,6 +15,32 @@ const {
 } = require('../services/central/securityService');
 
 // ─────────────────────────────────────────────────────────────────────────────
+// PUBLIC SUSPENSION STATUS ROUTE (Exempt from auth)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/central/suspension-info
+ * Returns live suspension status and support details for the red suspension page.
+ */
+router.get('/suspension-info', async (req, res) => {
+  try {
+    const config = await getOrCreateConfig();
+    res.json({
+      success: true,
+      is_suspended: !!config.is_suspended,
+      suspension_reason: config.suspension_reason,
+      suspended_at: config.suspended_at,
+      school_id: config.school_id,
+      school_name: config.school_name,
+      support_email: config.support_contact || 'billing-support@schoolplatform.net',
+      support_phone: '+1 (800) 555-0199',
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ADMIN ROUTES (Protected by JWT and Admin Role)
 // ─────────────────────────────────────────────────────────────────────────────
 

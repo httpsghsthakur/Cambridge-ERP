@@ -21,6 +21,8 @@ import Events from './pages/admin/Events';
 import AdminTeacherAttendance from './pages/admin/TeacherAttendance';
 import Settings from './pages/admin/Settings';
 import CentralIntegration from './pages/admin/CentralIntegration';
+import CentralBillingDashboard from './pages/admin/CentralBillingDashboard';
+import SuspensionPage from './pages/common/SuspensionPage';
 import StaffLeaveManagement from './pages/admin/StaffLeaveManagement';
 import AdminLeaveManagement from './pages/admin/LeaveManagement';
 import AdminDatesheets from './pages/admin/AdminDatesheets';
@@ -72,6 +74,7 @@ export default function App() {
           <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/suspended" element={<SuspensionPage />} />
             <Route path="/" element={<Navigate to="/login" replace />} />
 
           <Route
@@ -106,6 +109,7 @@ export default function App() {
             <Route path="admissions" element={<FCAdmissions />} />
             <Route path="settings" element={<Settings />} />
             <Route path="central-integration" element={<CentralIntegration />} />
+            <Route path="central-billing" element={<CentralBillingDashboard />} />
             <Route path="logs" element={<ActivityLogs />} />
             <Route path="security-logs" element={<SecurityLogs />} />
           </Route>

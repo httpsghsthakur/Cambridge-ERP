@@ -29,6 +29,10 @@ const StudentAchievement = require('./StudentAchievement');
 const CentralConfig      = require('./CentralConfig');
 const CentralSyncLog     = require('./CentralSyncLog');
 const CentralCommandLog  = require('./CentralCommandLog');
+const CentralSubscription    = require('./CentralSubscription');
+const CentralBillingInvoice  = require('./CentralBillingInvoice');
+const CentralBillingPayment  = require('./CentralBillingPayment');
+const CentralBillingAuditLog = require('./CentralBillingAuditLog');
 
 // ── Associations ──────────────────────────────────────────────────────────────
 
@@ -170,6 +174,12 @@ for (const modelName of Object.keys(sequelize.models)) {
 }
 
 
+CentralSubscription.hasMany(CentralBillingInvoice, { foreignKey: 'school_id', sourceKey: 'school_id', as: 'invoices' });
+CentralBillingInvoice.belongsTo(CentralSubscription, { foreignKey: 'school_id', targetKey: 'school_id', as: 'subscription' });
+
+CentralBillingInvoice.hasMany(CentralBillingPayment, { foreignKey: 'billing_id', sourceKey: 'billing_id', as: 'payments' });
+CentralBillingPayment.belongsTo(CentralBillingInvoice, { foreignKey: 'billing_id', targetKey: 'billing_id', as: 'invoice' });
+
 module.exports = {
   sequelize,
   User,
@@ -200,5 +210,9 @@ module.exports = {
   StudentAchievement,
   CentralConfig,
   CentralSyncLog,
-  CentralCommandLog
+  CentralCommandLog,
+  CentralSubscription,
+  CentralBillingInvoice,
+  CentralBillingPayment,
+  CentralBillingAuditLog
 };
