@@ -76,6 +76,7 @@ async function main() {
   await CentralBillingInvoice.destroy({ where: {}, truncate: false });
   await CentralSubscription.destroy({ where: {}, truncate: false });
   await CentralBillingAuditLog.destroy({ where: {}, truncate: false });
+  await CentralConfig.destroy({ where: {}, truncate: false });
 
   const testSchoolId = 'SCH-2026-TEST01';
   const testSchoolName = 'Staging Cambridge Academy';

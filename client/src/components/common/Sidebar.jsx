@@ -49,8 +49,7 @@ const navConfig = {
       section: 'SYSTEM & SETTINGS',
       items: [
         { icon: 'settings', label: 'Platform Settings', to: '/admin/settings' },
-        { icon: 'central', label: 'Central Integration', to: '/admin/central-integration' },
-        { icon: 'billing', label: 'Business Billing & Subscriptions', to: '/admin/central-billing' },
+        { icon: 'central', label: 'Central School ID', to: '/admin/central-integration' },
         { icon: 'credentials', label: 'Credential Setup', to: '/admin/credentials' },
         { icon: 'documents', label: 'Activity Logs', to: '/admin/logs' },
         { icon: 'settings', label: 'Security Logs', to: '/admin/security-logs' },

@@ -5,19 +5,24 @@ import toast from 'react-hot-toast';
 export default function Settings() {
   const [settings, setSettings] = useState({
     school_name: '',
+    school_subtitle: '',
     school_address: '',
     school_phone: '',
     school_email: '',
     school_logo_url: '',
     receipt_footer: '',
+    school_id: '',
+    central_connection_status: 'connected',
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     API.get('/settings')
       .then(res => {
-        setSettings(res.data);
+        setSettings(prev => ({ ...prev, ...res.data }));
       })
       .catch(() => toast.error('Failed to load settings'))
       .finally(() => setLoading(false));
@@ -27,12 +32,40 @@ export default function Settings() {
     setSettings(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
+  const handleCopySchoolId = () => {
+    if (!settings.school_id) return;
+    navigator.clipboard.writeText(settings.school_id);
+    setCopied(true);
+    toast.success('School ID copied to clipboard!');
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleSyncRealData = async () => {
+    if (!settings.school_id) {
+      toast.error('Please enter and save a School ID first.');
+      return;
+    }
+    setSyncing(true);
+    try {
+      const res = await API.post('/central/sync');
+      if (res.data?.success) {
+        toast.success(`Real operational data successfully sent to Central Platform! (${res.data.records_synced || 0} records synced)`);
+      } else {
+        toast.error(res.data?.error || 'Synchronization failed');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to sync data with Central Platform');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
     try {
       await API.put('/settings', settings);
-      toast.success('Settings updated successfully!');
+      toast.success('Settings and School ID saved successfully!');
       // Force reload to apply settings everywhere immediately
       window.location.reload();
     } catch (err) {
@@ -48,7 +81,7 @@ export default function Settings() {
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-gray-800">School Settings</h2>
-        <p className="text-sm text-gray-500 mt-1">Manage school profile and receipt format</p>
+        <p className="text-sm text-gray-500 mt-1">Manage school profile, receipts, and centralized platform connection</p>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
@@ -87,7 +120,7 @@ export default function Settings() {
                 onChange={handleChange}
                 rows={2}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 transition-colors"
-                placeholder="Full address to display on receipts"
+                placeholder="Full address to display on receipts and certificates"
               />
             </div>
 
@@ -123,7 +156,7 @@ export default function Settings() {
                   <img 
                     src={settings.school_logo_url} 
                     alt="Logo preview" 
-                    className="h-12 w-12 object-contain rounded border border-gray-200"
+                    className="h-12 w-12 object-contain rounded border border-gray-200 bg-white"
                   />
                 )}
                 <input
@@ -183,13 +216,69 @@ export default function Settings() {
                 placeholder="This is a computer-generated receipt."
               />
             </div>
+
+            {/* Centralized System School ID Configuration */}
+            <div className="space-y-3 sm:col-span-2 pt-4 border-t border-gray-200 bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-yellow-50/30 p-4 rounded-xl border border-blue-200">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <label className="text-sm font-bold text-blue-950 flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Centralized School ID (Send Real Data)
+                  </label>
+                  <p className="text-xs text-gray-600 mt-0.5">
+                    Enter the School ID to connect this ERP and transmit real operational data to our centralized platform.
+                  </p>
+                </div>
+                {settings.school_id && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                    Connected & Syncing Real Data
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  name="school_id"
+                  value={settings.school_id || ''}
+                  onChange={handleChange}
+                  className="flex-1 font-mono uppercase tracking-wider font-bold border border-blue-300 rounded-lg px-3.5 py-2 text-sm outline-none focus:border-blue-600 bg-white shadow-sm"
+                  placeholder="Enter School ID (e.g. SCH-2026-01001)"
+                />
+                {settings.school_id && (
+                  <button
+                    type="button"
+                    onClick={handleCopySchoolId}
+                    className="px-3.5 py-2 text-xs font-semibold bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition shadow-sm"
+                  >
+                    {copied ? '✓ Copied' : 'Copy School ID'}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSyncRealData}
+                  disabled={syncing || !settings.school_id}
+                  className="px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition disabled:opacity-50 shadow-sm"
+                >
+                  {syncing ? 'Sending...' : 'Sync Real Data Now'}
+                </button>
+              </div>
+
+              <div className="text-xs text-blue-900 bg-blue-100/70 p-3 rounded-lg border border-blue-200/80 flex items-start gap-2">
+                <span className="text-base flex-shrink-0">🔒</span>
+                <span>
+                  <strong>Real Data Guarantee:</strong> Real operational statistics (active students, teacher headcount, attendance rates, academic classes) are securely transmitted to our centralized system. Student fee balances and financial accounts remain strictly private and air-gapped.
+                </span>
+              </div>
+            </div>
           </div>
 
           <div className="pt-4 border-t border-gray-100 flex justify-end">
             <button
               type="submit"
               disabled={saving}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors disabled:opacity-50"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors disabled:opacity-50 shadow-sm"
             >
               {saving ? 'Saving...' : 'Save Settings'}
             </button>

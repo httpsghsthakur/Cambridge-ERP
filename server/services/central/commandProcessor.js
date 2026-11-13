@@ -1,4 +1,4 @@
-const { CentralCommandLog } = require('../../models');
+const { CentralCommandLog, CentralConfig } = require('../../models');
 const { getOrCreateConfig, rotateCredentials } = require('./configService');
 const { verifyTimestamp } = require('./securityService');
 const { invalidateSuspensionCache } = require('../../middleware/entitlementCheck');
@@ -38,7 +38,7 @@ async function processRemoteCommand(commandData) {
   if (!command_id) throw new Error('command_id is required');
   if (!command_type) throw new Error('command_type is required');
 
-  const config = await getOrCreateConfig();
+  const config = (school_id ? await CentralConfig.findOne({ where: { school_id } }) : null) || await getOrCreateConfig();
 
   // Validate school ID if issued
   if (config.school_id && school_id && config.school_id !== school_id) {
