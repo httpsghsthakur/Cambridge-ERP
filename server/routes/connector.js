@@ -166,8 +166,92 @@ router.post('/heartbeat', async (req, res) => {
       success: true,
       school_id: config.school_id,
       status: config.connection_status,
+      is_suspended: !!config.is_suspended,
       timestamp: new Date().toISOString()
     });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/v1/connector/status - Live operational & suspension status
+router.get('/status', async (req, res) => {
+  try {
+    const config = await getOrCreateConfig();
+    res.json({
+      success: true,
+      schoolId: config.school_id || 'SCH-B0E1B',
+      operationalStatus: config.is_suspended ? 'SUSPENDED' : 'ACTIVE',
+      isServiceAllowed: !config.is_suspended,
+      suspensionReason: config.suspension_reason,
+      suspendedAt: config.suspended_at,
+      connectionStatus: config.connection_status,
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/v1/connector/suspend - Remote suspension command
+router.post('/suspend', async (req, res) => {
+  try {
+    const { reason = 'This school management service is temporarily inactive. Please contact the platform administrator.' } = req.body || {};
+    const config = await getOrCreateConfig();
+    await config.update({
+      is_suspended: true,
+      suspension_reason: reason,
+      suspended_at: new Date(),
+      connection_status: 'suspended',
+    });
+    const { invalidateSuspensionCache } = require('../middleware/entitlementCheck');
+    invalidateSuspensionCache();
+
+    res.json({
+      success: true,
+      message: 'School ERP has been remotely suspended. All student/teacher data preserved safely.',
+      school_id: config.school_id,
+      is_suspended: true,
+      suspension_reason: reason,
+      suspended_at: config.suspended_at,
+      data_preserved: true
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/v1/connector/reactivate - Remote reactivation command
+router.post('/reactivate', async (req, res) => {
+  try {
+    const config = await getOrCreateConfig();
+    await config.update({
+      is_suspended: false,
+      suspension_reason: null,
+      suspended_at: null,
+      connection_status: 'connected',
+    });
+    const { invalidateSuspensionCache } = require('../middleware/entitlementCheck');
+    invalidateSuspensionCache();
+
+    res.json({
+      success: true,
+      message: 'School ERP has been remotely reactivated. Normal operations resumed.',
+      school_id: config.school_id,
+      is_suspended: false,
+      status: 'connected'
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/v1/connector/command - Generic remote command processor
+router.post('/command', async (req, res) => {
+  try {
+    const { processRemoteCommand } = require('../services/central/commandProcessor');
+    const result = await processRemoteCommand(req.body);
+    res.json(result);
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

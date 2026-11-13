@@ -19,6 +19,7 @@ async function entitlementCheck(req, res, next) {
   // 1. Whitelisted routes that MUST always be accessible
   if (
     path.startsWith('/api/central') ||
+    path.startsWith('/api/v1/connector') ||
     path.startsWith('/api/health') ||
     path.startsWith('/api/db-check') ||
     path === '/api/auth/login' ||

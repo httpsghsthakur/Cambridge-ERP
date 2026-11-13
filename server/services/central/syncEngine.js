@@ -52,6 +52,21 @@ async function sendHeartbeat() {
   const signature = generateHmacSignature(payload, config.connector_secret);
   let centralResponse = null;
 
+  let hbHeaders = {
+    'Content-Type': 'application/json',
+    'X-School-ID': config.school_id,
+    'x-school-id': config.school_id,
+    'X-Client-ID': config.connector_client_id,
+    'x-api-key': config.connector_client_id,
+    'X-API-Key': config.connector_client_id,
+    'Authorization': `Bearer ${config.connector_client_id}`,
+    'X-Signature-256': signature,
+    'x-signature': wwsSignature,
+    'X-Timestamp': String(payload.timestamp),
+    'x-timestamp': secTimestamp,
+    'X-Nonce': payload.nonce,
+  };
+
   const isMockMode =
     !config.central_api_url ||
     config.central_api_url.includes('mock') ||
@@ -63,21 +78,6 @@ async function sendHeartbeat() {
       `${config.central_api_url}/api/v1/connector/heartbeat`,
       `${config.central_api_url}/api/v1/heartbeat`,
     ];
-
-    const hbHeaders = {
-      'Content-Type': 'application/json',
-      'X-School-ID': config.school_id,
-      'x-school-id': config.school_id,
-      'X-Client-ID': config.connector_client_id,
-      'x-api-key': config.connector_client_id,
-      'X-API-Key': config.connector_client_id,
-      'Authorization': `Bearer ${config.connector_client_id}`,
-      'X-Signature-256': signature,
-      'x-signature': wwsSignature,
-      'X-Timestamp': String(payload.timestamp),
-      'x-timestamp': secTimestamp,
-      'X-Nonce': payload.nonce,
-    };
 
     for (const ep of heartbeatEndpoints) {
       try {
@@ -109,8 +109,10 @@ async function sendHeartbeat() {
 
   // Process any pending commands dispatched by central platform
   const commandResults = [];
+  const { processRemoteCommand } = require('./commandProcessor');
+  const { invalidateSuspensionCache } = require('../../middleware/entitlementCheck');
+
   if (centralResponse && Array.isArray(centralResponse.pending_commands) && centralResponse.pending_commands.length > 0) {
-    const { processRemoteCommand } = require('./commandProcessor');
     for (const cmd of centralResponse.pending_commands) {
       try {
         const res = await processRemoteCommand(cmd);
@@ -119,6 +121,69 @@ async function sendHeartbeat() {
         commandResults.push({ command_id: cmd.command_id, error: cmdErr.message });
       }
     }
+  } else if (!isMockMode && centralResponse && centralResponse.hasPendingCommands) {
+    // Poll WWS command queue
+    try {
+      const cmdUrl = `${config.central_api_url}/api/v1/connector/commands/pending`;
+      const cmdRes = await http.get(cmdUrl, {
+        headers: hbHeaders,
+        timeout: 5000,
+      });
+      if (cmdRes.data && Array.isArray(cmdRes.data.data)) {
+        for (const cmd of cmdRes.data.data) {
+          try {
+            const res = await processRemoteCommand({
+              command_id: cmd.commandId || cmd.command_id,
+              command_type: cmd.commandType || cmd.command_type,
+              payload: cmd.payload,
+              school_id: config.school_id,
+            });
+            commandResults.push({ command_id: cmd.commandId || cmd.command_id, result: res });
+
+            // Acknowledge execution to WWS
+            const ackUrl = `${config.central_api_url}/api/v1/connector/commands/${cmd.commandId || cmd.command_id}/ack`;
+            await http.post(ackUrl, {
+              execution_status: 'SUCCESS',
+              result_log: JSON.stringify(res),
+            }, { headers: hbHeaders, timeout: 5000 }).catch(() => {});
+          } catch (cmdErr) {
+            commandResults.push({ command_id: cmd.commandId, error: cmdErr.message });
+          }
+        }
+      }
+    } catch (pollErr) {
+      console.warn('[CENTRAL HEARTBEAT] Command polling note:', pollErr.message);
+    }
+  }
+
+  // Check remote operational status from WWS
+  if (!isMockMode && config.central_api_url) {
+    try {
+      const statusUrl = `${config.central_api_url}/api/v1/connector/status`;
+      const stRes = await http.get(statusUrl, { headers: hbHeaders, timeout: 5000 });
+      if (stRes.data && stRes.data.data) {
+        const remoteData = stRes.data.data;
+        if (remoteData.operationalStatus === 'SUSPENDED' || remoteData.isServiceAllowed === false) {
+          if (!config.is_suspended) {
+            await config.update({
+              is_suspended: true,
+              suspension_reason: remoteData.suspensionReason || 'Service temporarily suspended by platform administrator.',
+              suspended_at: remoteData.suspendedAt || new Date(),
+              connection_status: 'suspended',
+            });
+            invalidateSuspensionCache();
+          }
+        } else if (remoteData.operationalStatus === 'ACTIVE' && config.is_suspended) {
+          await config.update({
+            is_suspended: false,
+            suspension_reason: null,
+            suspended_at: null,
+            connection_status: 'connected',
+          });
+          invalidateSuspensionCache();
+        }
+      }
+    } catch (stErr) {}
   }
 
   return {

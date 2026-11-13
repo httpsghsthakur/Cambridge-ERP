@@ -90,6 +90,24 @@ router.post('/login', loginLimiter, validateLogin, async (req, res) => {
       return res.status(403).json({ message: 'Student account is pending approval.' });
     }
 
+    // Check school suspension for non-admin roles (Students, Teachers, Staff)
+    if (user.role !== 'admin') {
+      try {
+        const { CentralConfig } = require('../models');
+        const centralCfg = await CentralConfig.findOne();
+        if (centralCfg && centralCfg.is_suspended) {
+          return res.status(423).json({
+            status: 'suspended',
+            error: 'SERVICE_SUSPENDED',
+            message: centralCfg.suspension_reason || 'This school management service is temporarily inactive. Please complete your subscription payment to resume your services.',
+            suspended_at: centralCfg.suspended_at,
+          });
+        }
+      } catch (suspErr) {
+        // fail-open to avoid unexpected database lockouts
+      }
+    }
+
     const token = signToken(user.id);
 
     // Set JWT in HttpOnly cookie

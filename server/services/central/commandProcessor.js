@@ -13,9 +13,15 @@ const { invalidateSuspensionCache } = require('../../middleware/entitlementCheck
 
 const SUPPORTED_COMMANDS = [
   'suspend',
+  'suspend_service',
+  'SUSPEND_SERVICE',
   'reactivate',
+  'reactivate_service',
+  'REACTIVATE_SERVICE',
   'extend_subscription',
+  'EXTEND_SUBSCRIPTION',
   'update_subscription',
+  'CHANGE_PLAN',
   'sync_now',
   'health_check',
   'diagnostics',
@@ -37,6 +43,13 @@ async function processRemoteCommand(commandData) {
 
   if (!command_id) throw new Error('command_id is required');
   if (!command_type) throw new Error('command_type is required');
+
+  const rawType = (command_type || '').toLowerCase();
+  let normalizedType = rawType;
+  if (rawType === 'suspend_service') normalizedType = 'suspend';
+  if (rawType === 'reactivate_service') normalizedType = 'reactivate';
+  if (rawType === 'extend_subscription') normalizedType = 'extend_subscription';
+  if (rawType === 'change_plan') normalizedType = 'update_subscription';
 
   const config = (school_id ? await CentralConfig.findOne({ where: { school_id } }) : null) || await getOrCreateConfig();
 
@@ -71,7 +84,7 @@ async function processRemoteCommand(commandData) {
   }
 
   // Check against supported command whitelist
-  if (!SUPPORTED_COMMANDS.includes(command_type)) {
+  if (!SUPPORTED_COMMANDS.includes(command_type) && !SUPPORTED_COMMANDS.includes(normalizedType)) {
     const errorMsg = `Command "${command_type}" is not supported or recognized. Arbitrary execution is strictly prohibited.`;
     await CentralCommandLog.create({
       command_id,
@@ -89,7 +102,7 @@ async function processRemoteCommand(commandData) {
   let status = 'executed';
 
   try {
-    switch (command_type) {
+    switch (normalizedType) {
       // 1. Suspend ERP access (Application-level entitlement, preserves all data)
       case 'suspend': {
         const reason = payload.reason || 'Service temporarily suspended by platform administrator.';
