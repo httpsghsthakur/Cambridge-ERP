@@ -200,13 +200,13 @@ export default function StudentPerformance() {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-950 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-blue-500/10 skew-x-12 pointer-events-none" />
+      {/* Header Banner - Cambridge Navy with Gold Accent */}
+      <div className="bg-gradient-to-r from-[#0a1226] via-[#101e42] to-[#1e3a8a] text-white rounded-2xl p-6 shadow-xl relative overflow-hidden border-b-4 border-yellow-400">
+        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-yellow-400/5 skew-x-12 pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1.5">
-              <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-blue-500/20 text-blue-200 border border-blue-400/30 uppercase tracking-wider">
+              <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-yellow-400/20 text-yellow-300 border border-yellow-400/40 uppercase tracking-wider">
                 {isTeacher ? 'Teacher Academic Portal' : 'Admin Academic Analytics'}
               </span>
               {isTeacher && (
@@ -816,7 +816,7 @@ export default function StudentPerformance() {
                     <button
                       onClick={handleDownloadAllMarksheets}
                       disabled={pdfGenerating}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-sm disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition shadow-sm disabled:opacity-50"
                       title="Download Official Consolidated Marksheet of All Exams"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

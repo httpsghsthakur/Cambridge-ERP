@@ -905,7 +905,7 @@ export default function Timetable() {
               <button
                 onClick={() => saveTimetable(false)}
                 disabled={saving}
-                className="px-5 py-2.5 rounded-xl bg-[#6E1A33] text-white font-bold text-sm shadow-md hover:bg-[#5a1529] disabled:opacity-50 flex items-center gap-2"
+                className="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm shadow-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
@@ -1320,7 +1320,7 @@ export default function Timetable() {
                             onClick={() => setSelectedDayTab(d)}
                             className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all ${
                               isSelected
-                                ? 'bg-[#6E1A33] text-white shadow-sm'
+                                ? 'bg-blue-600 text-white shadow-sm'
                                 : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200'
                             }`}
                           >
@@ -1494,7 +1494,7 @@ export default function Timetable() {
                   checked={showSubjectTeacher}
                   onChange={(e) => setShowSubjectTeacher(e.target.checked)}
                 />
-                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#6E1A33]"></div>
+                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
               </label>
             </div>
 

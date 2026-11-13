@@ -52,8 +52,8 @@ export default function ReportCard() {
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           {/* School header */}
-          <div className="bg-[#1a1f2e] text-white text-center py-5 px-4">
-            <h2 className="text-base sm:text-lg font-bold">EduSmart Public School</h2>
+          <div className="bg-[#0a1226] text-white text-center py-5 px-4 border-b-2 border-yellow-400">
+            <h2 className="text-base sm:text-lg font-bold text-yellow-300">International Cambridge School Kishtwar</h2>
             <p className="text-slate-400 text-xs sm:text-sm mt-0.5">Report Card — 2024-25</p>
             <p className="text-blue-300 text-xs sm:text-sm mt-0.5">{selected.exam_name}</p>
           </div>

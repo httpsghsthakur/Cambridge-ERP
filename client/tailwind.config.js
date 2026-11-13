@@ -3,68 +3,110 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: '#7C59D7', // Primary Purple
-        'primary-hover': '#5B2DB8', // Deep Purple
-        sidebar: '#101832', // Dark Navy
-        'sidebar-hover': '#1e293b',
-        'sidebar-active': '#5B2DB8',
-        'bg-main': '#F7F3F9', // Soft Lavender
-        'card-border': '#ede9f0',
+        primary: '#1d4ed8', // Royal Blue
+        'primary-hover': '#1e40af', // Deep Royal Blue
+        'primary-light': '#eff6ff',
+        secondary: '#facc15', // Cambridge Yellow
+        'secondary-hover': '#eab308', // Warm Gold
+        'secondary-dark': '#ca8a04',
+        accent: '#facc15',
+        'accent-yellow': '#facc15',
+        'accent-blue': '#2563eb',
+        sidebar: '#0a1226', // Deep Cambridge Navy Blue
+        'sidebar-hover': '#131e3d',
+        'sidebar-active': '#1d4ed8',
+        'sidebar-yellow': '#facc15',
+        'bg-main': '#f8fafd', // Crisp Soft Slate/Blue-White
+        'card-border': '#e2e8f0',
         
-        // Custom color palette overrides to map general colors to school identity
+        // Cambridge Royal Blue Palette
         blue: {
-          50: '#f5f3ff',
-          100: '#ede9fe',
-          200: '#ddd6fe',
-          300: '#c4b5fd',
-          400: '#a78bfa',
-          500: '#8b5cf6',
-          600: '#7C59D7', // Primary Purple
-          700: '#5B2DB8', // Deep Purple
-          800: '#4c1d95',
-          900: '#3a0ca3',
-          950: '#2e0a82',
+          50: '#eff6ff',
+          100: '#dbeafe',
+          200: '#bfdbfe',
+          300: '#93c5fd',
+          400: '#60a5fa',
+          500: '#3b82f6',
+          600: '#2563eb', // Vibrant Royal Blue
+          700: '#1d4ed8', // Classic Deep Blue
+          800: '#1e40af', // Navy Royal
+          900: '#1e3a8a', // Deep Cambridge Navy
+          950: '#0a1226', // Midnight Navy
         },
+
+        // Cambridge Golden Yellow Palette
+        yellow: {
+          50: '#fefce8',
+          100: '#fef9c3',
+          200: '#fef08a',
+          300: '#fde047',
+          400: '#facc15', // Vibrant Cambridge Yellow
+          500: '#eab308', // Rich Golden Yellow
+          600: '#ca8a04', // Deep Gold / Amber
+          700: '#a16207',
+          800: '#854d0e',
+          900: '#713f12',
+          950: '#422006',
+        },
+
+        // Map purple to warm golden yellow / amber so existing purple utility classes render in theme
+        purple: {
+          50: '#fefce8',
+          100: '#fef9c3',
+          200: '#fef08a',
+          300: '#fde047',
+          400: '#facc15',
+          500: '#eab308',
+          600: '#ca8a04',
+          700: '#a16207',
+          800: '#854d0e',
+          900: '#713f12',
+          950: '#422006',
+        },
+
+        // Map indigo to deep royal / cobalt navy blue
         indigo: {
-          50: '#eef2ff',
-          100: '#e0e7ff',
-          200: '#c7d2fe',
-          300: '#a5b4fc',
-          400: '#818cf8',
-          500: '#6366f1',
-          600: '#4f46e5',
-          700: '#4338ca',
-          800: '#3730a3',
-          900: '#312e81',
-          950: '#1e1b4b',
+          50: '#eff6ff',
+          100: '#dbeafe',
+          200: '#bfdbfe',
+          300: '#93c5fd',
+          400: '#60a5fa',
+          500: '#3b82f6',
+          600: '#2563eb',
+          700: '#1d4ed8',
+          800: '#1e40af',
+          900: '#1e3a8a',
+          950: '#0a1226',
         },
 
         // EdTech Accents
         edtech: {
-          blue: '#287BEA',
-          green: '#16B981',
-          orange: '#F59A23',
-          pink: '#E85A91',
+          blue: '#1d4ed8',
+          yellow: '#facc15',
+          green: '#16a34a',
+          orange: '#ea580c',
+          pink: '#e11d48',
         },
 
-        // Attendance Status Colors (using requested specific hexes)
-        present: '#16B981',
-        absent: '#E85A91', // Pinkish red
+        // Attendance Status Colors
+        present: '#16a34a',
+        absent: '#e11d48',
         holiday: '#94a3b8',
         
         // Fees Status Colors
-        paid: '#16B981',
-        pending: '#F59A23',
-        overdue: '#E85A91'
+        paid: '#16a34a',
+        pending: '#eab308',
+        overdue: '#e11d48',
       },
       fontFamily: {
         sans: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
-        'premium': '0 10px 30px -5px rgba(124, 89, 215, 0.08), 0 5px 15px -5px rgba(124, 89, 215, 0.05)',
-        'glow': '0 0 20px -3px rgba(124, 89, 215, 0.25)',
-        'card': '0 4px 20px -2px rgba(124, 89, 215, 0.05), 0 2px 8px -1px rgba(0, 0, 0, 0.02)',
-        'card-hover': '0 20px 40px -15px rgba(124, 89, 215, 0.12)'
+        'premium': '0 10px 30px -5px rgba(29, 78, 216, 0.08), 0 5px 15px -5px rgba(250, 204, 21, 0.05)',
+        'glow': '0 0 20px -3px rgba(37, 99, 235, 0.35)',
+        'glow-yellow': '0 0 20px -3px rgba(250, 204, 21, 0.45)',
+        'card': '0 4px 20px -2px rgba(29, 78, 216, 0.04), 0 2px 8px -1px rgba(0, 0, 0, 0.02)',
+        'card-hover': '0 20px 40px -15px rgba(29, 78, 216, 0.12)'
       }
     }
   },

@@ -336,33 +336,31 @@ export default function Sidebar({ isOpen, onClose }) {
   const isStudentPortal = ['parent', 'student'].includes(user?.role);
   
   // Use settings if available, else fallback
-  const schoolName = settings?.school_name || "EduSmart";
-  const schoolSub = settings?.school_subtitle || "Public School";
+  const schoolName = settings?.school_name || "International Cambridge School Kishtwar";
+  const schoolSub = settings?.school_subtitle || "Kishtwar, Jammu & Kashmir";
 
   return (
     <>
       {/* Mobile Drawer Overlay */}
       {isOpen && <div className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm lg:hidden" onClick={onClose} />}
       
-      <aside className={`fixed top-0 left-0 z-40 flex h-full w-64 flex-col bg-[#0c102b] text-slate-300 border-r border-white/5 transition-transform duration-300 ease-in-out lg:static lg:z-auto lg:flex-shrink-0 lg:translate-x-0 ${
+      <aside className={`fixed top-0 left-0 z-40 flex h-full w-64 flex-col bg-[#081024] text-slate-300 border-r border-white/5 transition-transform duration-300 ease-in-out lg:static lg:z-auto lg:flex-shrink-0 lg:translate-x-0 ${
         isOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         
         {/* Brand Header */}
-        <div className="flex flex-shrink-0 items-center justify-between px-6 py-5 border-b border-white/5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-amber-500 to-orange-400 shadow-md shadow-orange-500/10 overflow-hidden">
+        <div className="flex flex-shrink-0 items-center justify-between px-5 py-5 border-b border-white/5">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-yellow-400 to-amber-500 text-blue-950 shadow-md shadow-yellow-500/20 overflow-hidden font-extrabold text-base">
               {settings?.school_logo_url ? (
                 <img src={settings.school_logo_url} alt="School Logo" className="w-full h-full object-cover" />
               ) : (
-                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
-                </svg>
+                <span className="font-extrabold text-blue-950 text-sm tracking-wider">ICS</span>
               )}
             </div>
-            <div>
-              <div className="text-sm font-extrabold text-white tracking-wide">{schoolName}</div>
-              <div className="text-[10px] font-semibold text-slate-400 mt-0.5 tracking-wider">{schoolSub}</div>
+            <div className="min-w-0">
+              <div className="text-xs font-extrabold text-white tracking-wide truncate" title={schoolName}>{schoolName}</div>
+              <div className="text-[10px] font-semibold text-yellow-400 mt-0.5 tracking-wider truncate">{schoolSub}</div>
             </div>
           </div>
           <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-white/5 hover:text-white lg:hidden transition-colors">
@@ -376,7 +374,7 @@ export default function Sidebar({ isOpen, onClose }) {
         <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
           {nav.map((section) => (
             <div key={section.section} className="space-y-1.5">
-              <p className="px-3 pb-1 text-[9px] font-bold uppercase tracking-widest text-slate-500">
+              <p className="px-3 pb-1 text-[9px] font-bold uppercase tracking-widest text-slate-400">
                 {section.section === 'TEACHER PANEL' && user?.linkedTeacher?.staff_type
                   ? `${user.linkedTeacher.staff_type.toUpperCase()} PANEL`
                   : section.section}
@@ -392,7 +390,7 @@ export default function Sidebar({ isOpen, onClose }) {
                   className={({ isActive }) =>
                     `cursor-pointer px-3.5 py-3 text-[13px] font-medium rounded-xl transition-all flex items-center gap-3 ${
                       isActive
-                        ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-600/15'
+                        ? 'bg-gradient-to-r from-blue-700 to-blue-600 text-white shadow-lg shadow-blue-900/30 border-l-4 border-yellow-400'
                         : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
                     }`
                   }
@@ -408,26 +406,26 @@ export default function Sidebar({ isOpen, onClose }) {
         {/* Bottom Banner Illustration */}
         <div className="px-4 py-4 mb-2 flex-shrink-0">
           {isStudentPortal ? (
-            <div className="bg-gradient-to-br from-[#1a2353] to-[#0f153a] border border-blue-500/10 rounded-2xl p-4 text-center shadow-lg relative overflow-hidden group">
-              <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-blue-500/5 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500" />
+            <div className="bg-gradient-to-br from-[#0e1d45] to-[#071129] border border-yellow-500/20 rounded-2xl p-4 text-center shadow-lg relative overflow-hidden group">
+              <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-yellow-400/10 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500" />
               <div className="flex justify-center mb-2.5">
-                <svg className="w-10 h-10 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <svg className="w-9 h-9 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                 </svg>
               </div>
               <p className="text-white text-xs font-bold tracking-wide">Keep learning,</p>
-              <p className="text-blue-400 text-xs font-bold">keep growing!</p>
+              <p className="text-yellow-400 text-xs font-bold">keep growing!</p>
             </div>
           ) : (
-            <div className="bg-gradient-to-br from-[#1b1c3c] to-[#0d0f28] border border-indigo-500/10 rounded-2xl p-4 text-center shadow-lg relative overflow-hidden group">
-              <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-indigo-500/5 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500" />
+            <div className="bg-gradient-to-br from-[#0e1d45] to-[#071129] border border-blue-400/20 rounded-2xl p-4 text-center shadow-lg relative overflow-hidden group">
+              <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-yellow-400/10 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500" />
               <div className="flex justify-center mb-2.5">
-                <svg className="w-10 h-10 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <svg className="w-9 h-9 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                 </svg>
               </div>
               <p className="text-white text-xs font-bold tracking-wide">Empowering Education,</p>
-              <p className="text-indigo-400 text-[10px] mt-0.5 font-bold uppercase tracking-wider">Inspiring Futures</p>
+              <p className="text-yellow-400 text-[10px] mt-0.5 font-bold uppercase tracking-wider">Inspiring Futures</p>
             </div>
           )}
         </div>

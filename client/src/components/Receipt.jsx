@@ -2,7 +2,7 @@ import { useSettings } from '../context/SettingsContext';
 
 export default function Receipt({ receipt, onPrint, onClose }) {
   const { settings } = useSettings() || {};
-  const schoolName = settings?.school_name || receipt?.school?.name || 'EduSmart Public School';
+  const schoolName = settings?.school_name || receipt?.school?.name || 'International Cambridge School Kishtwar';
   const schoolAddress = settings?.school_address || receipt?.school?.address || '';
   const schoolPhone = settings?.school_phone || receipt?.school?.phone || '';
   const schoolEmail = settings?.school_email || receipt?.school?.email || '';

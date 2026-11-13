@@ -263,7 +263,7 @@ export default function FeeStatus() {
       date:           fallbackRow?.paid_date || receiptPayload?.date || new Date().toISOString().split('T')[0],
       collected_by:   fallbackRow?.collected_by_name || fallbackRow?.collectedByUser?.name || receiptPayload?.collected_by || 'System',
       school: {
-        name:    settings?.school_name || receiptPayload?.school?.name || 'EduSmart Public School',
+        name:    settings?.school_name || receiptPayload?.school?.name || 'International Cambridge School Kishtwar',
         address: settings?.school_address || receiptPayload?.school?.address || '',
         phone:   settings?.school_phone || receiptPayload?.school?.phone || '',
         email:   settings?.school_email || receiptPayload?.school?.email || '',

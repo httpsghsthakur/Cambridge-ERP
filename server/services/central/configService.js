@@ -12,7 +12,7 @@ async function getOrCreateConfig() {
 
   if (!config) {
     // Read school name from settings if available
-    let schoolName = 'Cambridge ERP School';
+    let schoolName = 'International Cambridge School Kishtwar';
     try {
       const nameSetting = await Setting.findOne({ where: { key: 'school_name' } });
       if (nameSetting && nameSetting.value) schoolName = nameSetting.value;

@@ -18,8 +18,8 @@ html {
 body {
   margin: 0;
   font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  background-color: #F7F3F9;
-  color: #101832;
+  background-color: #f8fafd;
+  color: #0a1226;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
@@ -64,21 +64,21 @@ body {
 }
 .premium-card-hover:hover {
   transform: translateY(-4px);
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 20px 40px -15px rgba(29, 78, 216, 0.08);
   border-color: #e2e8f0;
 }
 
 /* Glassmorphism panel styling */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(226, 232, 240, 0.8);
 }
 
 .glass-panel-dark {
-  background: rgba(15, 23, 42, 0.8);
+  background: rgba(10, 18, 38, 0.88);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 /* Print settings */

@@ -5,11 +5,11 @@ const SettingsContext = createContext(null);
 
 export function SettingsProvider({ children }) {
   const [settings, setSettings] = useState({
-    school_name: 'EduSmart',
-    school_subtitle: 'Public School',
-    school_address: '',
+    school_name: 'International Cambridge School Kishtwar',
+    school_subtitle: 'Kishtwar, Jammu & Kashmir',
+    school_address: 'Kishtwar, Jammu & Kashmir',
     school_phone: '',
-    school_email: '',
+    school_email: 'info@cambridgeschoolkishtwar.com',
     school_logo_url: '',
     receipt_footer: 'This is a computer-generated receipt. No signature required.',
   });

@@ -331,9 +331,9 @@ router.post('/notify-whatsapp', protect, authorize(...FC_ROLES), async (req, res
     if (!student) return res.status(404).json({ message: 'Student not found.' });
 
     const templates = {
-      fee_reminder: `Dear ${student.parent_name}, fees for ${student.first_name} ${student.last_name} (${student.class}) are due. Please pay at the earliest. - EduSmart School`,
-      payment_confirm: `Dear ${student.parent_name}, payment received for ${student.first_name}. Thank you. - EduSmart School`,
-      admission_confirm: `Dear ${student.parent_name}, admission request for ${student.first_name} is under review. - EduSmart School`,
+      fee_reminder: `Dear ${student.parent_name}, fees for ${student.first_name} ${student.last_name} (${student.class}) are due. Please pay at the earliest. - International Cambridge School Kishtwar`,
+      payment_confirm: `Dear ${student.parent_name}, payment received for ${student.first_name}. Thank you. - International Cambridge School Kishtwar`,
+      admission_confirm: `Dear ${student.parent_name}, admission request for ${student.first_name} is under review. - International Cambridge School Kishtwar`,
     };
 
     const messageText = templates[message_type] || templates.fee_reminder;

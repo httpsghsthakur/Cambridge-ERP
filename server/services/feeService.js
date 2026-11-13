@@ -346,10 +346,10 @@ const buildReceiptData = (fee, student, collectedByUser) => {
     receipt_date:    receiptDate,
     transactions:    Array.isArray(parsedBreakdown.transactions) ? parsedBreakdown.transactions : [],
     school: {
-      name:    'EduSmart Public School',
+      name:    'International Cambridge School Kishtwar',
       address: '123 Education Lane, Knowledge City',
       phone:   '+91 9999999999',
-      email:   'info@edusmartschool.com',
+      email:   'info@cambridgeschoolkishtwar.com',
     },
     student: {
       id:          student.student_id,

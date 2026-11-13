@@ -1,4 +1,4 @@
-# Cambridge School ERP — Enterprise Management Platform
+# International Cambridge School Kishtwar ERP — Enterprise Management Platform
 
 [![Node.js Version](https://img.shields.io/badge/Node.js-v18%2B%20%7C%20v20%2B-green.svg)](https://nodejs.org/)
 [![React Version](https://img.shields.io/badge/React-18.2-blue.svg)](https://reactjs.org/)

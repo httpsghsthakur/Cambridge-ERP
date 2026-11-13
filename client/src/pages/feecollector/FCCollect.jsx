@@ -72,10 +72,10 @@ export default function FCCollect() {
     date: fee?.paid_date || new Date().toISOString().split('T')[0],
     collected_by: fee?.collectedByUser?.name || 'System',
     school: {
-      name: 'EduSmart Public School',
+      name: 'International Cambridge School Kishtwar',
       address: '123 Education Lane, Knowledge City',
       phone: '+91 9999999999',
-      email: 'info@edusmartschool.com',
+      email: 'info@cambridgeschoolkishtwar.com',
     },
     student: {
       name: `${student?.first_name || ''} ${student?.last_name || ''}`.trim(),

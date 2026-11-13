@@ -62,7 +62,7 @@ export default function Settings() {
                 value={settings.school_name || ''}
                 onChange={handleChange}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 transition-colors"
-                placeholder="e.g. EduSmart"
+                placeholder="e.g. International Cambridge School Kishtwar"
                 required
               />
             </div>
@@ -75,7 +75,7 @@ export default function Settings() {
                 value={settings.school_subtitle || ''}
                 onChange={handleChange}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 transition-colors"
-                placeholder="e.g. Public School"
+                placeholder="e.g. Kishtwar, Jammu & Kashmir"
               />
             </div>
 

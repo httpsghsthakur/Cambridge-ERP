@@ -16,11 +16,11 @@ router.get('/', async (req, res) => {
     
     // Provide defaults if not set
     const defaultSettings = {
-      school_name: 'EduSmart',
-      school_subtitle: 'Public School',
-      school_address: '123 Education Lane, City, Country',
+      school_name: 'International Cambridge School Kishtwar',
+      school_subtitle: 'Kishtwar, Jammu & Kashmir',
+      school_address: 'Kishtwar, Jammu & Kashmir',
       school_phone: '+1 234 567 890',
-      school_email: 'info@edusmart.com',
+      school_email: 'info@cambridgeschoolkishtwar.com',
       receipt_footer: 'This is a computer-generated receipt. No signature required.',
       ...settingsObj
     };

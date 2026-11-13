@@ -16,7 +16,7 @@ export const generateReportCard = (student, result) => {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text('EduSmart Public School', pageWidth / 2, 16, { align: 'center' });
+  doc.text(settings?.school_name || 'INTERNATIONAL CAMBRIDGE SCHOOL KISHTWAR', pageWidth / 2, 16, { align: 'center' });
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
@@ -124,7 +124,7 @@ export const generateFeeReceipt = async (fee, student, settings = {}) => {
   const doc = new jsPDF({ unit: 'mm', format: [148, 210] }); // A5
   const w = doc.internal.pageSize.width;
 
-  const schoolName = settings.school_name || 'EduSmart Public School';
+  const schoolName = settings.school_name || 'International Cambridge School Kishtwar';
   const schoolSub = settings.school_subtitle || '';
   const schoolAddress = settings.school_address || '';
   const schoolContact = [settings.school_phone, settings.school_email].filter(Boolean).join(' | ');
@@ -323,7 +323,7 @@ export const generateTimetablePDF = async ({
   }
 
   // Top header banner
-  doc.setFillColor(110, 26, 51); // #6E1A33
+  doc.setFillColor(30, 58, 138); // Royal Blue #1e3a8a
   doc.rect(0, 0, pageWidth, 28, 'F');
 
   let textLeft = 14;
@@ -490,9 +490,9 @@ export const generateConsolidatedMarksheet = (student, detailData, settings = {}
   const exams = academics.exams || [];
   const attendance = detailData?.attendance || {};
 
-  const schoolName = settings.school_name || 'CAMBRIDGE INTERNATIONAL SCHOOL';
+  const schoolName = settings.school_name || 'INTERNATIONAL CAMBRIDGE SCHOOL KISHTWAR';
   const schoolSub = settings.school_subtitle || 'Affiliated to Central Board of Secondary Education';
-  const schoolAddress = settings.school_address || 'Education Campus, Knowledge City';
+  const schoolAddress = settings.school_address || 'Kishtwar, Jammu & Kashmir';
 
   // 1. School Header Banner
   doc.setFillColor(15, 23, 42); // slate-900
@@ -772,7 +772,7 @@ export const generateComprehensivePerformanceReport = (student, detailData, sett
   const achievements = detailData?.achievements || [];
   const exams = academics.exams || [];
 
-  const schoolName = settings.school_name || 'CAMBRIDGE INTERNATIONAL SCHOOL';
+  const schoolName = settings.school_name || 'INTERNATIONAL CAMBRIDGE SCHOOL KISHTWAR';
   const schoolSub = settings.school_subtitle || 'Holistic Student Progress & Academic Performance Assessment';
 
   // Header Banner
