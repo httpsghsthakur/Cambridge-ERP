@@ -27,12 +27,21 @@ export default function ReportCard() {
 
   const handleDownload = async () => {
     setDownloading(true);
-    try { await generateReportCard(student, selected, settings); toast.success('Official Marksheet Downloaded!'); }
+    try {
+      const studentData = selected?.student || student;
+      const attData = selected?.attendance || null;
+      await generateReportCard(studentData, selected, settings, attData);
+      toast.success('Official Marksheet Downloaded!');
+    }
     catch { toast.error('PDF generation failed.'); }
     finally { setDownloading(false); }
   };
 
   if (loading) return <LoadingSpinner />;
+
+  const activeStudent = selected?.student || student;
+  const schoolName = settings?.school_name || 'International Cambridge School Kishtwar';
+  const sessionName = activeStudent?.session?.name || selected?.session_name || settings?.academic_session || '2024-25';
 
   return (
     <div className="space-y-4 max-w-2xl">
@@ -55,20 +64,20 @@ export default function ReportCard() {
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           {/* School header */}
           <div className="bg-[#0a1226] text-white text-center py-5 px-4 border-b-2 border-yellow-400">
-            <h2 className="text-base sm:text-lg font-bold text-yellow-300">International Cambridge School Kishtwar</h2>
-            <p className="text-slate-400 text-xs sm:text-sm mt-0.5">Report Card — 2024-25</p>
+            <h2 className="text-base sm:text-lg font-bold text-yellow-300">{schoolName}</h2>
+            <p className="text-slate-400 text-xs sm:text-sm mt-0.5">Report Card — {sessionName}</p>
             <p className="text-blue-300 text-xs sm:text-sm mt-0.5">{selected.exam_name}</p>
           </div>
 
           {/* Student info */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 sm:px-6 py-4 border-b border-gray-100">
-            <Avatar name={`${student?.first_name} ${student?.last_name}`} size="lg" />
+            <Avatar name={`${activeStudent?.first_name || ''} ${activeStudent?.last_name || ''}`} size="lg" />
             <div className="flex-1 min-w-0">
               <h3 className="font-bold text-gray-800 text-base">
-                {student?.first_name} {student?.last_name}
+                {activeStudent?.first_name} {activeStudent?.last_name}
               </h3>
               <p className="text-sm text-gray-500 mt-0.5">
-                {selected.class} — Section {selected.section} · {student?.student_id}
+                {selected.class} — Section {selected.section} · {activeStudent?.student_id || activeStudent?.admission_number || '—'}
               </p>
             </div>
             <div className="sm:text-right">

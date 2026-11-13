@@ -405,12 +405,14 @@ app.listen(port, host, () => {
           migrateTeacherSubjectColumn,
           migrateDatesheetAndAchievementTables,
           migrateSessionAttendanceAndPromotionColumns,
+          migrateStudentMarksheetColumns,
         } = require('./utils/dbMigrator');
         await migratePendingStudents();
         await migrateFeeColumns();
         await migrateTeacherSubjectColumn();
         await migrateDatesheetAndAchievementTables();
         await migrateSessionAttendanceAndPromotionColumns();
+        await migrateStudentMarksheetColumns();
 
         // Auto-create default session if none exists (Hotfix for Hostinger setup)
         const { Session, User } = require('./models');

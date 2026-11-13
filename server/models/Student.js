@@ -23,6 +23,13 @@ const Student = sequelize.define('Student', {
   parent_phone:      DataTypes.STRING(15),
   parent_address:    DataTypes.TEXT,
   parent_occupation: DataTypes.STRING(100),
+  mother_name:       DataTypes.STRING(100),
+
+  // Student Identity & Category
+  category:          DataTypes.STRING(50),
+  aadhar_number:     DataTypes.STRING(20),
+  pen_number:        DataTypes.STRING(30),
+  family_id:         DataTypes.STRING(30),
 
   admission_date: {
     type: DataTypes.DATEONLY,

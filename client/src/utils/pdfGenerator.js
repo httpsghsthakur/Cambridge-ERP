@@ -18,9 +18,9 @@ export const numberToWords = (n) => {
 
 // ── Helper: Convert date string to English words (e.g. 15th August 2011) ────
 export const dateToWords = (dateStr) => {
-  if (!dateStr) return 'FIFTEENTH AUGUST TWO THOUSAND ELEVEN';
+  if (!dateStr) return '—';
   const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return 'FIFTEENTH AUGUST TWO THOUSAND ELEVEN';
+  if (isNaN(d.getTime())) return '—';
   const ords = ['', 'FIRST', 'SECOND', 'THIRD', 'FOURTH', 'FIFTH', 'SIXTH', 'SEVENTH', 'EIGHTH', 'NINTH', 'TENTH',
     'ELEVENTH', 'TWELFTH', 'THIRTEENTH', 'FOURTEENTH', 'FIFTEENTH', 'SIXTEENTH', 'SEVENTEENTH', 'EIGHTEENTH', 'NINETEENTH', 'TWENTIETH',
     'TWENTY-FIRST', 'TWENTY-SECOND', 'TWENTY-THIRD', 'TWENTY-FOURTH', 'TWENTY-FIFTH', 'TWENTY-SIXTH', 'TWENTY-SEVENTH', 'TWENTY-EIGHTH', 'TWENTY-NINTH', 'THIRTIETH', 'THIRTY-FIRST'];
@@ -218,10 +218,11 @@ export const renderCertificateMarksheetPage = async (doc, {
   isConsolidated = false,
   logoBase64 = null,
 }) => {
+  const stu = result?.student || student || {};
   const schoolName = (settings?.school_name || 'INTERNATIONAL CAMBRIDGE SCHOOL KISHTWAR').toUpperCase();
   const schoolSub = settings?.school_subtitle || 'Senior Secondary Academic Institute';
   const schoolAddress = settings?.school_address || 'Near DC Office Complex, Kishtwar, Jammu & Kashmir - 182204';
-  const diseNo = settings?.dise_code || '23320400828';
+  const diseNo = settings?.dise_code || settings?.school_id || '—';
   const estdYear = settings?.school_established || '2012';
 
   // 1. Triple Decorative Frame (Royal Blue & Cambridge Yellow)
@@ -299,7 +300,7 @@ export const renderCertificateMarksheetPage = async (doc, {
   const titleText = isConsolidated ? 'MARKSHEET CUM CERTIFICATE (CONSOLIDATED)' : 'MARKSHEET CUM CERTIFICATE';
   doc.text(titleText, 105, 51, { align: 'center' });
 
-  const sessionName = student?.session?.name || result?.session_name || settings?.academic_session || '2024 - 2025';
+  const sessionName = stu?.session?.name || result?.session_name || result?.session?.name || settings?.academic_session || '—';
   doc.setFontSize(9.5);
   doc.text(`SESSION : ${sessionName}`, 105, 56, { align: 'center' });
 
@@ -336,13 +337,13 @@ export const renderCertificateMarksheetPage = async (doc, {
     curX += col.w;
   });
 
-  const sClass = String(result?.class || student?.class || '8th').toUpperCase();
-  const sRoll = String(result?.roll_number || student?.roll_number || '01');
-  const sAdmission = String(student?.student_id || student?.admission_number || 'ICS-2024-001');
-  const sCaste = String(student?.category || student?.caste || 'GENERAL').toUpperCase();
-  const sAadhar = String(student?.aadhar_number || student?.aadhaar || 'XXXXXXXX4589');
-  const sFamily = String(student?.family_id || 'FAM-9021');
-  const sPen = String(student?.pen_number || student?.sssmid || 'PEN-1029384');
+  const sClass = String(result?.class || stu?.class || '—').toUpperCase();
+  const sRoll = stu?.roll_number != null ? String(stu.roll_number) : (result?.roll_number != null ? String(result.roll_number) : '—');
+  const sAdmission = String(stu?.student_id || stu?.admission_number || '—');
+  const sCaste = stu?.category ? String(stu.category).toUpperCase() : (stu?.caste ? String(stu.caste).toUpperCase() : '—');
+  const sAadhar = String(stu?.aadhar_number || stu?.aadhaar || '—');
+  const sFamily = String(stu?.family_id || '—');
+  const sPen = String(stu?.pen_number || stu?.sssmid || '—');
 
   const vals = [sClass, sRoll, sAdmission, sCaste, sAadhar, sFamily, sPen];
   curX = gridX;
@@ -361,11 +362,11 @@ export const renderCertificateMarksheetPage = async (doc, {
   doc.setTextColor(0, 0, 0);
   doc.text('CERTIFIED THAT', 11, bioY + 2);
 
-  const stuFullName = `${student?.first_name || ''} ${student?.last_name || ''}`.trim().toUpperCase() || 'STUDENT NAME';
-  const fatherName = student?.parent_name ? student.parent_name.toUpperCase() : 'SHRI PARENT NAME';
-  const motherName = student?.mother_name ? student.mother_name.toUpperCase() : 'SMT. PARENT NAME';
-  const dobFormatted = student?.date_of_birth ? formatDate(student.date_of_birth) : '15/08/2012';
-  const dobWords = dateToWords(student?.date_of_birth);
+  const stuFullName = `${stu?.first_name || ''} ${stu?.last_name || ''}`.trim().toUpperCase() || '—';
+  const fatherName = stu?.parent_name ? String(stu.parent_name).toUpperCase() : '—';
+  const motherName = stu?.mother_name ? String(stu.mother_name).toUpperCase() : '—';
+  const dobFormatted = stu?.date_of_birth ? formatDate(stu.date_of_birth) : '—';
+  const dobWords = stu?.date_of_birth ? dateToWords(stu.date_of_birth) : '—';
 
   const bioFields = [
     { label: "STUDENT'S NAME  :", val: stuFullName },
@@ -470,15 +471,6 @@ export const renderCertificateMarksheetPage = async (doc, {
     sx += col.w;
   });
 
-  const standardSubjects = [
-    'ENGLISH',
-    'HINDI',
-    'SANSKRIT',
-    'MATHS',
-    'SCIENCE',
-    'SOCIAL SCIENCE',
-  ];
-
   let studentSubjects = [];
   if (result?.subjects?.length > 0) {
     studentSubjects = result.subjects.map(s => ({
@@ -491,43 +483,27 @@ export const renderCertificateMarksheetPage = async (doc, {
   } else if (academics?.subject_breakdown?.length > 0) {
     studentSubjects = academics.subject_breakdown.map(s => ({
       subject: String(s.subject).toUpperCase(),
-      max_marks: 100,
-      min_marks: 33,
-      obtained_marks: Math.round((Number(s.average_percentage || 0) / 100) * 100),
-      grade: s.grade || getGrade(s.average_percentage, 100),
+      max_marks: Number(s.total_max || 100),
+      min_marks: Math.round(Number(s.total_max || 100) * 0.33),
+      obtained_marks: s.total_obtained != null ? Number(s.total_obtained) : Math.round((Number(s.average_percentage || 0) / 100) * (s.total_max || 100)),
+      grade: s.grade || getGrade(s.total_obtained || s.average_percentage, s.total_max || 100),
     }));
   }
 
-  if (studentSubjects.length < 6) {
-    const existing = new Set(studentSubjects.map(s => s.subject));
-    for (const std of standardSubjects) {
-      if (studentSubjects.length >= 6) break;
-      if (!existing.has(std)) {
-        studentSubjects.push({
-          subject: std,
-          max_marks: 100,
-          min_marks: 33,
-          obtained_marks: 75,
-          grade: 'B+',
-        });
-      }
-    }
-  }
+  // Strictly REAL subjects from DB — NO fake subjects or dummy filler padding!
+  const hasRealSubjects = studentSubjects.length > 0;
 
-  const attPct = attendance?.percentage != null ? Number(attendance.percentage) : 88;
-  const regGrade = attPct >= 90 ? 'A+' : attPct >= 80 ? 'A' : attPct >= 70 ? 'B+' : 'B';
+  const realAtt = attendance || result?.attendance || stu?.attendance || null;
+  const attPct = realAtt?.percentage != null ? Number(realAtt.percentage) : null;
+  const regGrade = attPct != null ? (attPct >= 90 ? 'A+' : attPct >= 80 ? 'A' : attPct >= 70 ? 'B+' : attPct >= 60 ? 'B' : attPct >= 40 ? 'C' : 'D') : '—';
 
   const coActivities = [
-    { name: 'COMPUTER & G.K.', grade: 'A+' },
-    { name: 'REGULARITY', grade: regGrade },
-    { name: 'YOGA ACTIVITIES', grade: 'A+' },
-    { name: 'BEHAVIOUR & COMPASSION', grade: 'A+' },
-    { name: 'RESPECTFUL AND COURTEOUS', grade: 'A+' },
-    { name: 'DISCIPLINE', grade: 'A' },
-    { name: 'ARTS & CRAFT', grade: 'A' },
+    { name: 'REGULARITY / ATTENDANCE', grade: regGrade },
+    { name: 'DISCIPLINE & CONDUCT', grade: attPct != null && attPct >= 75 ? 'A' : (attPct != null ? 'B' : '—') },
+    { name: 'ACADEMIC INITIATIVE', grade: hasRealSubjects ? (result?.grade || 'B+') : '—' },
   ];
 
-  const numRows = Math.max(studentSubjects.length, coActivities.length);
+  const numRows = Math.max(studentSubjects.length, coActivities.length, 1);
   const rowH = 6.2;
   const dataStartY = tableY + 11.0;
 
@@ -565,6 +541,15 @@ export const renderCertificateMarksheetPage = async (doc, {
       doc.setFont('helvetica', 'bold');
       doc.text(String(sub.obtained_marks), 11 + 87 + 8.5, ry + 4.3, { align: 'center' });
       doc.text(sub.grade, 11 + 103 + 6, ry + 4.3, { align: 'center' });
+    } else if (!hasRealSubjects && r === 0) {
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(100, 116, 139);
+      doc.text('NO EXAMINATION MARKS RECORDED IN DATABASE', 11 + 3, ry + 4.3);
+      doc.text('—', 11 + 44 + 13, ry + 4.3, { align: 'center' });
+      doc.text('—', 11 + 70 + 8.5, ry + 4.3, { align: 'center' });
+      doc.text('—', 11 + 87 + 8.5, ry + 4.3, { align: 'center' });
+      doc.text('—', 11 + 103 + 6, ry + 4.3, { align: 'center' });
     }
 
     doc.rect(126, ry, rightTableW, rowH, 'S');
@@ -594,12 +579,16 @@ export const renderCertificateMarksheetPage = async (doc, {
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
   doc.text('GRAND TOTAL', 11 + 3, totalRowY + 4.6);
-  doc.text(String(grandMax), 11 + 44 + 13, totalRowY + 4.6, { align: 'center' });
-  doc.text(String(grandMin), 11 + 70 + 8.5, totalRowY + 4.6, { align: 'center' });
-  doc.text(String(grandObt), 11 + 87 + 8.5, totalRowY + 4.6, { align: 'center' });
+  doc.text(hasRealSubjects ? String(grandMax) : '—', 11 + 44 + 13, totalRowY + 4.6, { align: 'center' });
+  doc.text(hasRealSubjects ? String(grandMin) : '—', 11 + 70 + 8.5, totalRowY + 4.6, { align: 'center' });
+  doc.text(hasRealSubjects ? String(grandObt) : '—', 11 + 87 + 8.5, totalRowY + 4.6, { align: 'center' });
 
-  const finalPct = grandMax > 0 ? ((grandObt / grandMax) * 100).toFixed(2) : (result?.percentage || 0);
-  const finalGrade = result?.grade || getGrade(grandObt, grandMax);
+  const finalPct = grandMax > 0
+    ? ((grandObt / grandMax) * 100).toFixed(2)
+    : (result?.percentage != null ? Number(result.percentage).toFixed(2) : '—');
+  const finalGrade = hasRealSubjects && grandMax > 0
+    ? (result?.grade || getGrade(grandObt, grandMax))
+    : (result?.grade || '—');
   doc.text(finalGrade, 11 + 103 + 6, totalRowY + 4.6, { align: 'center' });
 
   doc.setFillColor(248, 250, 252);
@@ -611,13 +600,16 @@ export const renderCertificateMarksheetPage = async (doc, {
   const col1X = 12;
   const col2X = 106;
 
-  const finalDivision = getDivision(finalPct);
-  const promotedTo = getPromotedClass(sClass);
-  const rankStr = result?.rank ? `${result.rank}${result.rank === 1 ? 'ST' : result.rank === 2 ? 'ND' : result.rank === 3 ? 'RD' : 'TH'} IN CLASS` : '1ST IN CLASS';
-  const schoolReopen = settings?.school_reopen_date || '01 APRIL 2025';
+  const hasScore = hasRealSubjects && grandMax > 0;
+  const isPassed = hasScore && studentSubjects.every(s => s.obtained_marks >= s.min_marks) && Number(finalPct) >= 33;
+  const finalDivision = hasScore ? getDivision(finalPct) : '—';
+  const promotedTo = isPassed ? getPromotedClass(sClass) : (hasScore ? `HELD BACK IN ${sClass}` : '—');
+  const rankStr = result?.rank ? `#${result.rank} IN CLASS` : '—';
+  const schoolReopen = settings?.school_reopen_date || '—';
+  const pctStr = hasScore ? `${finalPct}%` : (finalPct !== '—' ? `${finalPct}%` : '—');
 
   const leftRes = [
-    { label: 'RESULT', val: Number(finalPct) >= 33 ? 'PASSED & PROMOTED' : 'NEEDS IMPROVEMENT' },
+    { label: 'RESULT', val: !hasScore ? 'RECORD AWAITED' : (isPassed ? 'PASSED & PROMOTED' : 'NEEDS IMPROVEMENT') },
     { label: 'DIVISION', val: finalDivision },
     { label: 'PROMOTED TO CLASS', val: promotedTo },
   ];
@@ -641,7 +633,7 @@ export const renderCertificateMarksheetPage = async (doc, {
   });
 
   const rightRes = [
-    { label: 'PERCENTAGE', val: `${finalPct}%` },
+    { label: 'PERCENTAGE', val: pctStr },
     { label: 'RANK', val: rankStr },
     { label: 'SCHOOL REOPEN', val: `: ${schoolReopen}` },
   ];
@@ -692,19 +684,23 @@ export const renderCertificateMarksheetPage = async (doc, {
 };
 
 // ── Report Card PDF (Official Marksheet Cum Certificate) ───────────────────────
-export const generateReportCard = async (student, result, settings = {}) => {
+export const generateReportCard = async (student, result, settings = {}, attendance = null) => {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const logoBase64 = await loadLogoBase64(settings?.school_logo_url);
 
+  const realStudent = result?.student || student || {};
+  const realAttendance = attendance || result?.attendance || realStudent?.attendance || null;
+
   await renderCertificateMarksheetPage(doc, {
-    student,
+    student: realStudent,
     result,
+    attendance: realAttendance,
     settings,
     isConsolidated: false,
     logoBase64,
   });
 
-  const stuId = student?.student_id || 'student';
+  const stuId = realStudent?.student_id || 'student';
   const exName = (result?.exam_name || 'exam').replace(/\s+/g, '_');
   doc.save(`Marksheet_${stuId}_${exName}.pdf`);
 };

@@ -177,7 +177,7 @@ export default function StudentPerformance() {
   const handleDownloadSingleExam = async (exam) => {
     if (!detailData || !exam) return;
     try {
-      await generateReportCard(detailData.student, exam, settings);
+      await generateReportCard(detailData.student, exam, settings, detailData.attendance);
       toast.success(`Marksheet for ${exam.exam_name} downloaded!`);
     } catch (err) {
       console.error(err);

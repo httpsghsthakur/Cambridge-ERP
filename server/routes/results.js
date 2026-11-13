@@ -9,6 +9,8 @@ const {
   ClassIncharge,
   User,
   Notification,
+  Attendance,
+  Session,
 } = require('../models');
 const { protect, authorize, hasPermission } = require('../middleware/auth');
 const { validateResultCreate, validateResultInchargeReview } = require('../middleware/validator');
@@ -95,14 +97,39 @@ router.get('/student/:studentId', protect, async (req, res) => {
     const where = { student_id: studentId };
     if (req.user.role === 'parent' || req.user.role === 'student') where.is_published = true;
 
-    const results = await Result.findAll({
-      where,
-      include: [{ model: ResultSubject, as: 'subjects' }],
-      order: [['created_at', 'DESC']],
-    });
+    const [results, attRows] = await Promise.all([
+      Result.findAll({
+        where,
+        include: [
+          { model: ResultSubject, as: 'subjects' },
+          {
+            model: Student,
+            as: 'student',
+            include: [{ model: Session, as: 'session', attributes: ['id', 'name'] }],
+          },
+        ],
+        order: [['created_at', 'DESC']],
+      }),
+      Attendance.findAll({
+        where: { student_id: studentId },
+      }),
+    ]);
+
+    const workingDays = attRows.filter((r) => r.status !== 'holiday').length;
+    const attendedDays = attRows.filter((r) => r.status === 'present' || r.status === 'late').length;
+    const attPct = workingDays > 0 ? Math.round((attendedDays / workingDays) * 100) : null;
+    const attendanceSummary = {
+      total_working_days: workingDays,
+      attended_days: attendedDays,
+      percentage: attPct,
+    };
 
     res.set('Cache-Control', 'no-store');
-    res.json(results.map(r => r.toJSON()));
+    res.json(results.map((r) => {
+      const json = r.toJSON();
+      json.attendance = attendanceSummary;
+      return json;
+    }));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -132,7 +159,11 @@ router.get('/class', protect, authorize('admin', 'admin2', 'teacher'), async (re
     const results = await Result.findAll({
       where,
       include: [
-        { model: Student, as: 'student', attributes: ['id', 'first_name', 'last_name', 'roll_number'] },
+        {
+          model: Student,
+          as: 'student',
+          attributes: ['id', 'student_id', 'first_name', 'last_name', 'roll_number', 'class', 'section', 'date_of_birth', 'parent_name', 'mother_name', 'category', 'aadhar_number', 'pen_number', 'family_id'],
+        },
         { model: ResultSubject, as: 'subjects' },
         { model: User, as: 'enteredByUser', attributes: ['id', 'name', 'role'] },
       ],

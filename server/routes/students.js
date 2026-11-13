@@ -15,8 +15,9 @@ const { profileUpdateLimiter } = require('../middleware/rateLimiters');
 const STUDENT_CREATE_FIELDS = [
   'first_name', 'last_name', 'date_of_birth', 'gender',
   'class', 'section', 'roll_number', 'session_id',
-  'parent_name', 'parent_phone', 'parent_email', 'parent_address',
+  'parent_name', 'mother_name', 'parent_phone', 'parent_email', 'parent_address',
   'address', 'blood_group', 'religion', 'category', 'aadhar_number',
+  'pen_number', 'family_id',
   'previous_school', 'admission_date',
   'email', 'password',
 ];
@@ -24,8 +25,9 @@ const STUDENT_CREATE_FIELDS = [
 const STUDENT_UPDATE_FIELDS = [
   'first_name', 'last_name', 'date_of_birth', 'gender',
   'class', 'section', 'roll_number', 'session_id',
-  'parent_name', 'parent_phone', 'parent_email', 'parent_address',
+  'parent_name', 'mother_name', 'parent_phone', 'parent_email', 'parent_address',
   'address', 'blood_group', 'religion', 'category', 'aadhar_number',
+  'pen_number', 'family_id',
   'student_status',
 ];
 

@@ -254,6 +254,14 @@ async function migrateSessionAttendanceAndPromotionColumns() {
     const qi = sequelize.getQueryInterface();
     const { DataTypes } = require('sequelize');
     const promoDesc = await qi.describeTable('promotion_history');
+    const attDesc = await qi.describeTable('attendance');
+
+    if (!attDesc.is_finalized) {
+      await qi.addColumn('attendance', 'is_finalized', {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+      });
+    }
 
     const columnsToAdd = [
       ['from_section', { type: DataTypes.STRING(5), allowNull: true }],
@@ -323,10 +331,40 @@ async function migrateSessionAttendanceAndPromotionColumns() {
   }
 }
 
+async function migrateStudentMarksheetColumns() {
+  try {
+    const qi = sequelize.getQueryInterface();
+    const studentsDesc = await qi.describeTable('students');
+    const { DataTypes } = require('sequelize');
+
+    const columnsToAdd = [
+      { name: 'mother_name', type: DataTypes.STRING(100) },
+      { name: 'category', type: DataTypes.STRING(50) },
+      { name: 'aadhar_number', type: DataTypes.STRING(20) },
+      { name: 'pen_number', type: DataTypes.STRING(30) },
+      { name: 'family_id', type: DataTypes.STRING(30) },
+    ];
+
+    for (const col of columnsToAdd) {
+      if (!studentsDesc[col.name]) {
+        console.log(`[MIGRATOR] Adding column ${col.name} to students`);
+        await qi.addColumn('students', col.name, {
+          type: col.type,
+          allowNull: true,
+        });
+      }
+    }
+    console.log('[MIGRATOR] ✅ Student marksheet identity columns verified.');
+  } catch (err) {
+    console.error('[MIGRATOR] ❌ Student marksheet columns migration notice:', err.message);
+  }
+}
+
 module.exports = {
   migratePendingStudents,
   migrateFeeColumns,
   migrateTeacherSubjectColumn,
   migrateDatesheetAndAchievementTables,
   migrateSessionAttendanceAndPromotionColumns,
+  migrateStudentMarksheetColumns,
 };
