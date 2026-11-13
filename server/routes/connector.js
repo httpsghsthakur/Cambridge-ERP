@@ -33,9 +33,10 @@ router.post('/approval-request', async (req, res) => {
     const config = await getOrCreateConfig();
 
     // Persist incoming credentials
+    const incomingCentralUrl = req.body.central_url || req.headers['x-central-url'] || 'https://wws.ktwr.in';
     const updates = {
       school_id: cleanSchoolId,
-      central_api_url: 'https://wws.ktwr.in',
+      central_api_url: incomingCentralUrl,
       last_error: null,
     };
     if (api_key) updates.connector_client_id = api_key.trim();
@@ -47,6 +48,7 @@ router.post('/approval-request', async (req, res) => {
     await Setting.upsert({ key: 'school_id', value: cleanSchoolId });
     if (api_key) await Setting.upsert({ key: 'central_api_key', value: api_key.trim() });
     if (hmac_secret) await Setting.upsert({ key: 'central_hmac_secret', value: hmac_secret.trim() });
+    await Setting.upsert({ key: 'central_erp_url', value: incomingCentralUrl });
 
     // Check if this school has already been approved by an ERP admin
     const approvalSetting = await Setting.findOne({ where: { key: 'central_approval_status' } });
@@ -60,7 +62,8 @@ router.post('/approval-request', async (req, res) => {
       action,
       requested_scopes,
       requested_at: timestamp || new Date().toISOString(),
-      requester: 'WWS Central ERP Command (https://wws.ktwr.in)',
+      received_at: new Date().toISOString(),
+      requester: req.body.requester || `Central Command (${incomingCentralUrl})`,
       status: isAlreadyApproved ? 'APPROVED' : 'PENDING'
     };
 
@@ -69,17 +72,28 @@ router.post('/approval-request', async (req, res) => {
       value: JSON.stringify(approvalRequestData)
     });
 
-    // Extract real census data directly from database
-    const operationalData = await extractOperationalData();
-    const studentCount = operationalData.students?.total_count || 0;
-    const activeStudents = operationalData.students?.active_count || 0;
-    const teacherCount = operationalData.teachers?.total_count || 0;
-    const attendanceRate = operationalData.attendance?.overall_attendance_rate || 95.0;
-    const classDistribution = operationalData.students?.class_wise_distribution || {};
+    // Extract real census data directly from database safely
+    let studentCount = 0;
+    let activeStudents = 0;
+    let teacherCount = 0;
+    let attendanceRate = 95.0;
+    let classDistribution = {};
 
+    try {
+      const operationalData = await extractOperationalData();
+      studentCount = operationalData.students?.total_count || 0;
+      activeStudents = operationalData.students?.active_count || 0;
+      teacherCount = operationalData.teachers?.total_count || 0;
+      attendanceRate = operationalData.attendance?.overall_attendance_rate || 95.0;
+      classDistribution = operationalData.students?.class_wise_distribution || {};
+    } catch (e) {
+      console.warn('[CONNECTOR /approval-request] extractOperationalData warning:', e.message);
+    }
+
+    const detectedErpUrl = `${req.protocol}://${req.get('host')}`;
     const censusData = {
       schoolId: cleanSchoolId,
-      erpUrl: 'https://cambridge-erp.ktwr.in',
+      erpUrl: detectedErpUrl,
       approvalStatus: isAlreadyApproved ? 'APPROVED' : 'PENDING_ADMIN_APPROVAL',
       totalStudents: studentCount,
       activeStudents: activeStudents,
@@ -87,7 +101,9 @@ router.post('/approval-request', async (req, res) => {
       staff: 0,
       attendanceRate: parseFloat(attendanceRate),
       classDistribution: classDistribution,
-      source: 'LIVE_CAMBRIDGE_ERP'
+      source: 'LIVE_CAMBRIDGE_ERP',
+      receivedByErp: true,
+      receivedAt: new Date().toISOString()
     };
 
     if (isAlreadyApproved) {
