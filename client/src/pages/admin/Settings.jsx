@@ -11,16 +11,9 @@ export default function Settings() {
     school_email: '',
     school_logo_url: '',
     receipt_footer: '',
-    school_id: 'SCH-B0E1B',
-    central_erp_url: 'https://wws.ktwr.in',
-    central_api_key: 'cc_live_pk_05b30262475f599e500ea4f5',
-    central_hmac_secret: 'cc_sec_live_12af5e17caea7f904921bd489184dd3b6267514f3191a7d1',
-    central_connection_status: 'connected',
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     API.get('/settings')
@@ -33,34 +26,6 @@ export default function Settings() {
 
   const handleChange = (e) => {
     setSettings(prev => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-
-  const handleCopySchoolId = () => {
-    if (!settings.school_id) return;
-    navigator.clipboard.writeText(settings.school_id);
-    setCopied(true);
-    toast.success('School ID copied to clipboard!');
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleSyncRealData = async () => {
-    if (!settings.school_id) {
-      toast.error('Please enter and save a School ID first.');
-      return;
-    }
-    setSyncing(true);
-    try {
-      const res = await API.post('/central/sync');
-      if (res.data?.success) {
-        toast.success(`Real operational data successfully sent to Central Platform! (${res.data.records_synced || 0} records synced)`);
-      } else {
-        toast.error(res.data?.error || 'Synchronization failed');
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to sync data with Central Platform');
-    } finally {
-      setSyncing(false);
-    }
   };
 
   const handleSubmit = async (e) => {
@@ -218,112 +183,6 @@ export default function Settings() {
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 transition-colors"
                 placeholder="This is a computer-generated receipt."
               />
-            </div>
-
-            {/* Centralized System School ID Configuration */}
-            <div className="space-y-4 sm:col-span-2 pt-4 border-t border-gray-200 bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-yellow-50/30 p-5 rounded-2xl border border-blue-200">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div>
-                  <label className="text-sm font-bold text-blue-950 flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    Centralized ERP Connector Credentials (Send Real Data)
-                  </label>
-                  <p className="text-xs text-gray-600 mt-0.5">
-                    Connect this ERP to your remote centralized system (<code className="bg-white/80 px-1 py-0.5 rounded font-mono">https://wws.ktwr.in</code>) to transmit live operational metrics.
-                  </p>
-                </div>
-                {settings.school_id && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-                    Connected & Syncing Real Data
-                  </span>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-gray-700 uppercase">Central Platform URL</label>
-                  <input
-                    type="url"
-                    name="central_erp_url"
-                    value={settings.central_erp_url || ''}
-                    onChange={handleChange}
-                    className="w-full font-mono text-xs border border-gray-300 rounded-lg px-3 py-2 outline-none focus:border-blue-600 bg-white"
-                    placeholder="https://wws.ktwr.in"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-gray-700 uppercase">School ID (CENTRAL_SCHOOL_ID)</label>
-                  <input
-                    type="text"
-                    name="school_id"
-                    value={settings.school_id || ''}
-                    onChange={handleChange}
-                    className="w-full font-mono uppercase font-bold text-blue-950 text-xs border border-gray-300 rounded-lg px-3 py-2 outline-none focus:border-blue-600 bg-white"
-                    placeholder="SCH-B0E1B"
-                  />
-                </div>
-
-                <div className="space-y-1 sm:col-span-2">
-                  <label className="text-xs font-bold text-gray-700 uppercase">Connector API Key (CENTRAL_API_KEY)</label>
-                  <input
-                    type="text"
-                    name="central_api_key"
-                    value={settings.central_api_key || ''}
-                    onChange={handleChange}
-                    className="w-full font-mono text-xs border border-gray-300 rounded-lg px-3 py-2 outline-none focus:border-blue-600 bg-white"
-                    placeholder="cc_live_pk_..."
-                  />
-                </div>
-
-                <div className="space-y-1 sm:col-span-2">
-                  <label className="text-xs font-bold text-gray-700 uppercase">HMAC Secret Key (CENTRAL_HMAC_SECRET)</label>
-                  <input
-                    type="password"
-                    name="central_hmac_secret"
-                    value={settings.central_hmac_secret || ''}
-                    onChange={handleChange}
-                    className="w-full font-mono text-xs border border-gray-300 rounded-lg px-3 py-2 outline-none focus:border-blue-600 bg-white"
-                    placeholder="cc_sec_live_..."
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-blue-200/60">
-                <div className="flex items-center gap-2">
-                  {settings.school_id && (
-                    <button
-                      type="button"
-                      onClick={handleCopySchoolId}
-                      className="px-3.5 py-1.5 text-xs font-semibold bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition shadow-sm"
-                    >
-                      {copied ? '✓ Copied' : 'Copy School ID'}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={handleSyncRealData}
-                    disabled={syncing || !settings.school_id}
-                    className="px-4 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition disabled:opacity-50 shadow-sm"
-                  >
-                    {syncing ? 'Sending...' : '⚡ Transmit Real Data Now'}
-                  </button>
-                </div>
-                <a
-                  href="/admin/central-integration"
-                  className="text-xs font-semibold text-blue-700 hover:text-blue-900 underline"
-                >
-                  Open Full Central Connector Dashboard →
-                </a>
-              </div>
-
-              <div className="text-xs text-blue-900 bg-blue-100/70 p-3 rounded-lg border border-blue-200/80 flex items-start gap-2">
-                <span className="text-base flex-shrink-0">🔒</span>
-                <span>
-                  <strong>Real Data Guarantee:</strong> Real operational statistics (active students, teacher headcount, attendance rates, academic classes) are securely transmitted to our centralized system. Student fee balances and financial accounts remain strictly private and air-gapped.
-                </span>
-              </div>
             </div>
           </div>
 
