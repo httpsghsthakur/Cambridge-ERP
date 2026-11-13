@@ -52,15 +52,25 @@ router.get('/status', protect, authorize('admin'), async (req, res) => {
   try {
     const config = await getOrCreateConfig();
 
-    const recentSyncs = await CentralSyncLog.findAll({
-      limit: 10,
-      order: [['started_at', 'DESC']],
-    });
+    let recentSyncs = [];
+    try {
+      recentSyncs = await CentralSyncLog.findAll({
+        limit: 10,
+        order: [['id', 'DESC']],
+      });
+    } catch (e) {
+      console.warn('[CENTRAL] Failed to load recentSyncs:', e.message);
+    }
 
-    const recentCommands = await CentralCommandLog.findAll({
-      limit: 10,
-      order: [['executed_at', 'DESC']],
-    });
+    let recentCommands = [];
+    try {
+      recentCommands = await CentralCommandLog.findAll({
+        limit: 10,
+        order: [['id', 'DESC']],
+      });
+    } catch (e) {
+      console.warn('[CENTRAL] Failed to load recentCommands:', e.message);
+    }
 
     // Config for display
     const sanitizedConfig = {

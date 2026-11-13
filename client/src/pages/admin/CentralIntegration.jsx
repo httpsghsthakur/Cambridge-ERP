@@ -500,7 +500,7 @@ export default function CentralIntegration() {
                 {recentSyncs.map((sync) => (
                   <tr key={sync.id} className="hover:bg-gray-50/50">
                     <td className="py-2.5 px-4 font-mono text-gray-700">
-                      {new Date(sync.started_at).toLocaleString()}
+                      {new Date(sync.started_at || sync.created_at).toLocaleString()}
                     </td>
                     <td className="py-2.5 px-4 uppercase font-semibold text-gray-800">
                       {sync.sync_type}

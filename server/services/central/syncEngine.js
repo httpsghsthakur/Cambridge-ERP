@@ -168,7 +168,6 @@ async function synchronizeOperationalData(syncType = 'scheduled') {
   const syncLog = await CentralSyncLog.create({
     sync_type: syncType,
     status: 'in_progress',
-    started_at: startedAt,
   });
 
   try {

@@ -8,11 +8,12 @@ const CentralSyncLog = sequelize.define('CentralSyncLog', {
     autoIncrement: true,
   },
   sync_type: {
-    type: DataTypes.ENUM('heartbeat', 'scheduled_sync', 'manual_sync', 'command_sync'),
+    type: DataTypes.STRING(64),
     allowNull: false,
+    defaultValue: 'scheduled_sync',
   },
   status: {
-    type: DataTypes.ENUM('success', 'failed', 'partial', 'in_progress'),
+    type: DataTypes.STRING(32),
     defaultValue: 'in_progress',
   },
   payload_summary: {
@@ -31,6 +32,24 @@ const CentralSyncLog = sequelize.define('CentralSyncLog', {
   duration_ms: {
     type: DataTypes.INTEGER,
     allowNull: true,
+  },
+  started_at: {
+    type: DataTypes.VIRTUAL,
+    get() {
+      return this.getDataValue('created_at');
+    },
+  },
+  records_synced: {
+    type: DataTypes.VIRTUAL,
+    get() {
+      if (!this.payload_summary) return 0;
+      try {
+        const p = JSON.parse(this.payload_summary);
+        return (p.students_total || 0) + (p.teachers_total || 0) + (p.classes_count || 0);
+      } catch (e) {
+        return 0;
+      }
+    },
   },
 }, {
   tableName: 'central_sync_logs',
