@@ -2,7 +2,12 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const fs = require('fs');
-const sharp = require('sharp');
+let sharp = null;
+try {
+  sharp = require('sharp');
+} catch (e) {
+  console.warn('[Profile] sharp module not available on this Node runtime (' + e.message + '). Direct file save fallback enabled.');
+}
 const { protect } = require('../middleware/auth');
 const { uploadAvatar, validateImageMagicBytes } = require('../middleware/upload');
 const { User, Student, Teacher, Session } = require('../models');
@@ -108,19 +113,25 @@ router.post('/avatar', protect, (req, res) => {
         return res.status(404).json({ message: 'User not found.' });
       }
 
-      // Generate unique filename
-      const fileName = `avatar-${user.id}-${Date.now()}.webp`;
-      const targetPath = path.join(AVATAR_DIR, fileName);
-
-      // Auto-compress and resize using Sharp
-      await sharp(req.file.buffer)
-        .resize(200, 200, {
-          fit: 'cover',
-          position: 'center',
-        })
-        .toFormat('webp')
-        .webp({ quality: 80 })
-        .toFile(targetPath);
+      // Generate unique filename & save avatar (with sharp if available, or direct buffer write)
+      let fileName, targetPath;
+      if (sharp) {
+        fileName = `avatar-${user.id}-${Date.now()}.webp`;
+        targetPath = path.join(AVATAR_DIR, fileName);
+        await sharp(req.file.buffer)
+          .resize(200, 200, {
+            fit: 'cover',
+            position: 'center',
+          })
+          .toFormat('webp')
+          .webp({ quality: 80 })
+          .toFile(targetPath);
+      } else {
+        const ext = path.extname(req.file.originalname) || '.jpg';
+        fileName = `avatar-${user.id}-${Date.now()}${ext}`;
+        targetPath = path.join(AVATAR_DIR, fileName);
+        fs.writeFileSync(targetPath, req.file.buffer);
+      }
 
       // Path traversal defense: strictly sanitize old file basename
       if (user.profile_photo) {
