@@ -19,7 +19,7 @@ const STUDENT_CREATE_FIELDS = [
   'address', 'blood_group', 'religion', 'category', 'aadhar_number',
   'pen_number', 'family_id',
   'previous_school', 'admission_date',
-  'email', 'password',
+  'email', 'password', 'profile_photo',
 ];
 
 const STUDENT_UPDATE_FIELDS = [
@@ -28,7 +28,7 @@ const STUDENT_UPDATE_FIELDS = [
   'parent_name', 'mother_name', 'parent_phone', 'parent_email', 'parent_address',
   'address', 'blood_group', 'religion', 'category', 'aadhar_number',
   'pen_number', 'family_id',
-  'student_status',
+  'student_status', 'profile_photo',
 ];
 
 /** Pick only allowed keys from an object */

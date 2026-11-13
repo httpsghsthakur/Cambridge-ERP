@@ -4,6 +4,8 @@ import Modal from '../../components/common/Modal';
 import MarksForm from '../../components/forms/MarksForm';
 import { getGradeBg, formatDate } from '../../utils/helpers';
 import { CLASSES, SECTIONS } from '../../constants/roles';
+import { useSettings } from '../../context/SettingsContext';
+import { generateReportCard } from '../../utils/pdfGenerator';
 import toast from 'react-hot-toast';
 
 function EditResultModal({ result, onClose, onSave }) {
@@ -77,6 +79,7 @@ function EditResultModal({ result, onClose, onSave }) {
 }
 
 export default function Marks() {
+  const { settings } = useSettings() || {};
   const [cls, setCls]           = useState('Class 8');
   const [section, setSection]   = useState('A');
   const [students, setStudents] = useState([]);
@@ -229,7 +232,23 @@ export default function Marks() {
                     </span>
                   </td>
                   <td className="py-3 px-4 text-xs text-gray-400">{formatDate(r.created_at)}</td>
-                  <td className="py-3 px-4 text-right">
+                  <td className="py-3 px-4 text-right flex items-center justify-end gap-1.5">
+                    <button
+                      onClick={async () => {
+                        try {
+                          await generateReportCard(r.student, r, settings);
+                          toast.success('Marksheet downloaded!');
+                        } catch (e) {
+                          toast.error('Failed to generate marksheet');
+                        }
+                      }}
+                      className="text-amber-600 hover:bg-amber-50 p-1.5 rounded-md transition-colors"
+                      title="Download Official Marksheet / Report Card"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </button>
                     <button
                       onClick={() => setEditingResult(r)}
                       disabled={r.is_published}

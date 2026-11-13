@@ -11,6 +11,14 @@ export default function Settings() {
     school_email: '',
     school_logo_url: '',
     receipt_footer: '',
+    dise_code: '',
+    school_established: '',
+    school_medium: 'ENGLISH MEDIUM',
+    academic_session: '2024 - 2025',
+    school_reopen_date: '01 APRIL 2025',
+    school_motto_1: 'Play',
+    school_motto_2: 'Learn',
+    school_motto_3: 'Grow',
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -183,6 +191,106 @@ export default function Settings() {
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 transition-colors"
                 placeholder="This is a computer-generated receipt."
               />
+            </div>
+            {/* Official Report Card & Certificate Settings */}
+            <div className="space-y-4 sm:col-span-2 pt-4 border-t border-gray-200">
+              <div>
+                <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Official Report Card & Marksheet Customization
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">Customize marksheet headers, DICE code, estd year, motto, and academic session</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-700">DICE / UDISE No.</label>
+                  <input
+                    type="text"
+                    name="dise_code"
+                    value={settings.dise_code || ''}
+                    onChange={handleChange}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
+                    placeholder="e.g. 23320400828"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-700">Actual School Estd. Date / Year</label>
+                  <input
+                    type="text"
+                    name="school_established"
+                    value={settings.school_established || ''}
+                    onChange={handleChange}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
+                    placeholder="e.g. 2012 or 15 August 2012"
+                  />
+                  <p className="text-[10px] text-gray-400">Printed as ESTD. on official marksheets & seals</p>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-700">Medium of Instruction</label>
+                  <input
+                    type="text"
+                    name="school_medium"
+                    value={settings.school_medium || ''}
+                    onChange={handleChange}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
+                    placeholder="e.g. ENGLISH MEDIUM"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-700">Academic Session</label>
+                  <input
+                    type="text"
+                    name="academic_session"
+                    value={settings.academic_session || ''}
+                    onChange={handleChange}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
+                    placeholder="e.g. 2024 - 2025"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-700">School Reopen Date</label>
+                  <input
+                    type="text"
+                    name="school_reopen_date"
+                    value={settings.school_reopen_date || ''}
+                    onChange={handleChange}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
+                    placeholder="e.g. 01 APRIL 2025"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-700">Badge Motto (3 Words)</label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <input
+                      type="text"
+                      name="school_motto_1"
+                      value={settings.school_motto_1 || ''}
+                      onChange={handleChange}
+                      className="w-full border border-gray-200 rounded-lg px-2 py-2 text-xs outline-none focus:border-blue-500 text-center"
+                      placeholder="Play"
+                    />
+                    <input
+                      type="text"
+                      name="school_motto_2"
+                      value={settings.school_motto_2 || ''}
+                      onChange={handleChange}
+                      className="w-full border border-gray-200 rounded-lg px-2 py-2 text-xs outline-none focus:border-blue-500 text-center"
+                      placeholder="Learn"
+                    />
+                    <input
+                      type="text"
+                      name="school_motto_3"
+                      value={settings.school_motto_3 || ''}
+                      onChange={handleChange}
+                      className="w-full border border-gray-200 rounded-lg px-2 py-2 text-xs outline-none focus:border-blue-500 text-center"
+                      placeholder="Grow"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 

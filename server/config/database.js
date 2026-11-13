@@ -8,9 +8,16 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 // ── Validate required env vars ────────────────────────────────────────────────
 const isProd = process.env.NODE_ENV === 'production';
-const hasMySqlEnv = process.env.DB_NAME && process.env.DB_USER;
+const isPlaceholderHost = process.env.DB_HOST && process.env.DB_HOST.includes('XXX');
+const hasMySqlEnv = process.env.DB_NAME && process.env.DB_USER && !isPlaceholderHost;
 
 let sequelize;
+
+if (isPlaceholderHost) {
+  console.log('[DB CONFIG] ⚠️ Placeholder DB_HOST detected ("' + process.env.DB_HOST + '").');
+  console.log('[DB CONFIG] ⚠️ Please replace "XXX" in server/.env with your real Hostinger MySQL host.');
+  console.log('[DB CONFIG] ⚠️ Falling back to SQLite for local execution.');
+}
 
 if (hasMySqlEnv) {
   // MySQL Configuration (Production or explicit Dev)
@@ -23,7 +30,7 @@ if (hasMySqlEnv) {
   sequelize = new Sequelize(
     process.env.DB_NAME,
     process.env.DB_USER,
-    process.env.DB_PASS || '',
+    process.env.DB_PASS || process.env.DB_PASSWORD || '',
     {
       host: dbHost,
       port: dbPort,

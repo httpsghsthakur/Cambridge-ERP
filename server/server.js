@@ -380,6 +380,7 @@ app.listen(port, host, () => {
           `ALTER TABLE \`students\` ADD COLUMN \`approved_at\` DATETIME NULL;`,
           `ALTER TABLE \`students\` ADD COLUMN \`rejection_reason\` TEXT NULL;`,
           `ALTER TABLE \`students\` ADD COLUMN \`student_id\` VARCHAR(20) NULL;`,
+          `ALTER TABLE \`students\` ADD COLUMN \`profile_photo\` LONGTEXT NULL;`,
         ];
         for (const sql of alterQueries) {
           try { await sequelize.query(sql); } catch (e) {

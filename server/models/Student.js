@@ -36,6 +36,11 @@ const Student = sequelize.define('Student', {
     defaultValue: DataTypes.NOW
   },
 
+  profile_photo: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+
   // ── Status system ─────────────────────────────────────────────────────────
   is_active: {
     type: DataTypes.BOOLEAN,

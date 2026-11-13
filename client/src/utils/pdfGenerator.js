@@ -90,6 +90,8 @@ export const loadLogoBase64 = async (logoUrl) => {
   }
 };
 
+export const loadPhotoBase64 = loadLogoBase64;
+
 // ── Helper: Draw Decorative Colored Pencils Along Top Border ─────────────────
 const drawTopPencils = (doc, startX, startY, totalWidth) => {
   const numPencils = 36;
@@ -135,7 +137,7 @@ const drawTopPencils = (doc, startX, startY, totalWidth) => {
 };
 
 // ── Helper: Draw Circular Official Cambridge Crest / Seal ────────────────────
-const drawOfficialSeal = (doc, cx, cy, radius) => {
+const drawOfficialSeal = (doc, cx, cy, radius, estdYear = '') => {
   // Outer Royal Blue circle
   doc.setFillColor(26, 54, 138);
   doc.circle(cx, cy, radius, 'F');
@@ -153,59 +155,103 @@ const drawOfficialSeal = (doc, cx, cy, radius) => {
   doc.setTextColor(250, 204, 21); // Gold
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
-  doc.text('ICS', cx, cy - 0.4, { align: 'center' });
+  doc.text('ICS', cx, cy - (estdYear ? 0.4 : -2.5), { align: 'center' });
 
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(4.8);
-  doc.text('ESTD. 2012', cx, cy + 3.8, { align: 'center' });
+  if (estdYear) {
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(4.8);
+    doc.text(`ESTD. ${estdYear}`, cx, cy + 3.8, { align: 'center' });
+  }
 };
 
-// ── Helper: Draw Blackboard Badge ("Play Learn Grow") ────────────────────────
-const drawBlackboardBadge = (doc, x, y, w, h) => {
-  // Wooden frame
-  doc.setFillColor(180, 83, 9); // amber-700
-  doc.roundedRect(x, y, w, h, 2, 2, 'F');
-  doc.setDrawColor(120, 53, 15);
+// ── Helper: Draw Student Photograph Box (Right Side) ─────────────────────────
+const drawStudentPhoto = (doc, x, y, w, h, photoBase64, studentName = '') => {
+  // Outer frame
+  doc.setFillColor(255, 255, 255);
+  doc.roundedRect(x, y, w, h, 1, 1, 'FD');
+  doc.setDrawColor(26, 54, 138); // Royal blue border
   doc.setLineWidth(0.4);
-  doc.roundedRect(x, y, w, h, 2, 2, 'S');
+  doc.roundedRect(x, y, w, h, 1, 1, 'S');
 
-  // Chalkboard surface
-  doc.setFillColor(19, 78, 54); // dark chalkboard green
-  doc.roundedRect(x + 1.8, y + 1.8, w - 3.6, h - 3.6, 1, 1, 'F');
+  if (photoBase64) {
+    try {
+      doc.addImage(photoBase64, 'JPEG', x + 0.8, y + 0.8, w - 1.6, h - 1.6);
+      doc.setDrawColor(203, 213, 225);
+      doc.setLineWidth(0.2);
+      doc.rect(x + 0.8, y + 0.8, w - 1.6, h - 1.6, 'S');
+    } catch (e) {
+      drawPhotoPlaceholder(doc, x, y, w, h, studentName);
+    }
+  } else {
+    drawPhotoPlaceholder(doc, x, y, w, h, studentName);
+  }
 
-  // Chalk text
+  // Label underneath
+  doc.setFontSize(6);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 58, 138);
+  doc.text('STUDENT PHOTOGRAPH', x + w / 2, y + h + 2.8, { align: 'center' });
+};
+
+// ── Helper: Draw Student Photo Placeholder Box ───────────────────────────────
+const drawPhotoPlaceholder = (doc, x, y, w, h, studentName = '') => {
+  doc.setFillColor(248, 250, 252);
+  doc.roundedRect(x + 0.8, y + 0.8, w - 1.6, h - 1.6, 1, 1, 'F');
+
+  doc.setDrawColor(180, 195, 215);
+  doc.setLineWidth(0.3);
+  doc.rect(x + 2, y + 2, w - 4, h - 4, 'S');
+
+  const cx = x + w / 2;
+  const cy = y + h / 2 - 3;
+  doc.setFillColor(215, 228, 245);
+  // Head
+  doc.circle(cx, cy - 3.5, 4.5, 'F');
+  // Torso / shoulders
+  doc.roundedRect(cx - 7.5, cy + 2.5, 15, 8.5, 2.5, 2.5, 'F');
+
+  doc.setFontSize(6);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(140, 160, 190);
+  doc.text('AFFIX', cx, cy + 13.5, { align: 'center' });
+  doc.text('PASSPORT PHOTO', cx, cy + 16.5, { align: 'center' });
+};
+
+// ── Helper: Draw Faint Background Watermark with Emblem ──────────────────────
+const drawWatermark = (doc, cx, cy, radius, schoolName = 'INTERNATIONAL CAMBRIDGE PUBLIC SCHOOL', location = 'KISHTWAR • JAMMU & KASHMIR', estd = '') => {
+  doc.setDrawColor(226, 235, 248);
+  doc.setLineWidth(0.5);
+  doc.circle(cx, cy, radius, 'S');
+  doc.circle(cx, cy, radius - 4.5, 'S');
+
+  // Open Book Vector Icon in center of watermark
+  const bookY = cy - 8;
+  doc.setLineWidth(0.45);
+  // Left Page
+  doc.line(cx, bookY + 5, cx - 7, bookY + 3.5);
+  doc.line(cx - 7, bookY + 3.5, cx - 7, bookY - 3.5);
+  doc.line(cx - 7, bookY - 3.5, cx, bookY - 1.5);
+  doc.line(cx, bookY - 1.5, cx, bookY + 5);
+  // Right Page
+  doc.line(cx, bookY + 5, cx + 7, bookY + 3.5);
+  doc.line(cx + 7, bookY + 3.5, cx + 7, bookY - 3.5);
+  doc.line(cx + 7, bookY - 3.5, cx, bookY - 1.5);
+  // Page ribs
+  doc.line(cx - 6, bookY - 1, cx - 1, bookY + 0.5);
+  doc.line(cx + 1, bookY + 0.5, cx + 6, bookY - 1);
+
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
-  doc.setTextColor(253, 224, 71); // chalk yellow
-  doc.text('Play', x + (w - 3.6) / 2 + 1.8, y + 7.5, { align: 'center' });
+  doc.setTextColor(220, 230, 245);
+  doc.text(schoolName.toUpperCase(), cx, cy - 13, { align: 'center' });
 
-  doc.setTextColor(255, 255, 255); // chalk white
-  doc.text('Learn', x + (w - 3.6) / 2 + 1.8, y + 14.5, { align: 'center' });
-
-  doc.setTextColor(250, 204, 21); // chalk gold
-  doc.text('Grow', x + (w - 3.6) / 2 + 1.8, y + 21.5, { align: 'center' });
-
-  // Chalk underline
-  doc.setDrawColor(254, 240, 138);
-  doc.setLineWidth(0.3);
-  doc.line(x + 8, y + 23.5, x + w - 8, y + 23.5);
-};
-
-// ── Helper: Draw Faint Background Watermark ──────────────────────────────────
-const drawWatermark = (doc, cx, cy, radius, schoolName) => {
-  doc.setDrawColor(230, 238, 250);
-  doc.setLineWidth(0.4);
-  doc.circle(cx, cy, radius, 'S');
-  doc.circle(cx, cy, radius - 4, 'S');
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.setTextColor(230, 238, 250);
-  doc.text('INTERNATIONAL CAMBRIDGE SCHOOL', cx, cy - 8, { align: 'center' });
-  doc.setFontSize(8);
-  doc.text('KISHTWAR · JAMMU & KASHMIR', cx, cy + 1, { align: 'center' });
   doc.setFontSize(7.5);
-  doc.text('ESTD. 2012', cx, cy + 9, { align: 'center' });
+  doc.text(location.toUpperCase(), cx, cy + 9, { align: 'center' });
+
+  if (estd) {
+    doc.setFontSize(7);
+    doc.text(`★  ESTD. ${estd}  ★`, cx, cy + 15, { align: 'center' });
+  }
 };
 
 // ── Core Function: Render CBSE/State Style Marksheet Cum Certificate Page ────
@@ -217,13 +263,15 @@ export const renderCertificateMarksheetPage = async (doc, {
   settings = {},
   isConsolidated = false,
   logoBase64 = null,
+  studentPhotoBase64 = null,
 }) => {
   const stu = result?.student || student || {};
-  const schoolName = (settings?.school_name || 'INTERNATIONAL CAMBRIDGE SCHOOL KISHTWAR').toUpperCase();
-  const schoolSub = settings?.school_subtitle || 'Senior Secondary Academic Institute';
-  const schoolAddress = settings?.school_address || 'Near DC Office Complex, Kishtwar, Jammu & Kashmir - 182204';
-  const diseNo = settings?.dise_code || settings?.school_id || '—';
-  const estdYear = settings?.school_established || '2012';
+  const schoolName = (settings?.school_name || 'INTERNATIONAL CAMBRIDGE PUBLIC SCHOOL KISHTWAR').toUpperCase();
+  const schoolSub = (settings?.school_subtitle || settings?.school_address || 'KISHTWAR, JAMMU & KASHMIR').toUpperCase();
+  const schoolAddress = (settings?.school_address || 'KISHTWAR, JAMMU & KASHMIR').toUpperCase();
+  const diseNo = settings?.dise_code || settings?.dice_no || settings?.udise_no || settings?.school_id || '';
+  const estdYear = settings?.school_established || settings?.establishment_date || '';
+  const schoolMedium = (settings?.school_medium || 'ENGLISH MEDIUM').toUpperCase();
 
   // 1. Triple Decorative Frame (Royal Blue & Cambridge Yellow)
   // Outer Royal Blue Frame
@@ -244,39 +292,40 @@ export const renderCertificateMarksheetPage = async (doc, {
   // 2. Top Decorative Colored Pencil Border
   drawTopPencils(doc, 9.4, 9.4, 191.2);
 
-  // 3. ESTD and DISE NO.
+  // 3. ESTD and DISE NO. (Top Header Meta - Only printed if filled by admin)
   doc.setTextColor(30, 41, 59);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text(`ESTD. ${estdYear}`, 13, 19.5);
-  doc.text(`DICE NO. : ${diseNo}`, 197, 19.5, { align: 'right' });
-
-  // 4. School Logo (Admin set or vector crest)
-  if (logoBase64) {
-    try {
-      doc.addImage(logoBase64, 'PNG', 13, 21.5, 24, 24);
-    } catch (e) {
-      drawOfficialSeal(doc, 25, 33.5, 11);
-    }
-  } else {
-    drawOfficialSeal(doc, 25, 33.5, 11);
+  if (estdYear) {
+    doc.text(`ESTD. ${estdYear}`, 13, 19.5);
+  }
+  if (diseNo) {
+    doc.text(`DICE NO. : ${diseNo}`, 197, 19.5, { align: 'right' });
   }
 
-  // 5. School Name Header
-  const centerX = 114;
-  doc.setTextColor(185, 28, 28); // Bold Indian school red/crimson as in reference
+  // 4. School Logo on Left Side (Custom uploaded logo or official circular crest)
+  if (logoBase64) {
+    try {
+      doc.addImage(logoBase64, 'PNG', 13, 20.5, 24, 24);
+    } catch (e) {
+      drawOfficialSeal(doc, 25, 32.5, 11, estdYear);
+    }
+  } else {
+    drawOfficialSeal(doc, 25, 32.5, 11, estdYear);
+  }
+
+  // 5. School Name Header (Crimson Red, Centered)
+  const centerX = 105; // Perfect A4 horizontal center (210 / 2)
+  doc.setTextColor(185, 28, 28); // Bold school red as in reference
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16.5);
   doc.text(schoolName, centerX, 27.5, { align: 'center' });
-
-  doc.setFontSize(12.5);
-  doc.text('& SENIOR SECONDARY ACADEMY', centerX, 33.5, { align: 'center' });
 
   // 6. [ ENGLISH MEDIUM ] Pill Box
   const pillW = 46;
   const pillH = 4.8;
   const pillX = centerX - pillW / 2;
-  const pillY = 36.5;
+  const pillY = 31.5;
   doc.setFillColor(255, 255, 255);
   doc.setDrawColor(26, 54, 138);
   doc.setLineWidth(0.35);
@@ -285,85 +334,119 @@ export const renderCertificateMarksheetPage = async (doc, {
   doc.setTextColor(26, 54, 138);
   doc.setFontSize(7.5);
   doc.setFont('helvetica', 'bold');
-  doc.text('ENGLISH MEDIUM', centerX, pillY + 3.4, { align: 'center' });
+  doc.text(schoolMedium, centerX, pillY + 3.4, { align: 'center' });
 
-  // 7. Address Line
+  // 7. Location Line
   doc.setTextColor(30, 58, 138);
-  doc.setFontSize(7.5);
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  doc.text(schoolAddress.toUpperCase(), centerX, 45, { align: 'center' });
+  doc.text(schoolSub, centerX, 41.5, { align: 'center' });
 
-  // 8. Document Title & Session
+  // 8. Document Title & Session (Dynamic based on exam type & custom settings)
+  let titleText = 'ANNUAL CONSOLIDATED MARKSHEET CUM CERTIFICATE';
+  const exType = result?.exam_type || '';
+  const exName = (result?.exam_name || '').trim().toUpperCase();
+
+  if (settings?.marksheet_title) {
+    titleText = settings.marksheet_title.toUpperCase();
+  } else if (exName.includes('CONSOLIDATED') || exName.includes('ANNUAL') || isConsolidated || exType === 'annual') {
+    titleText = 'ANNUAL CONSOLIDATED MARKSHEET CUM CERTIFICATE';
+  } else if (exName.includes('HALF YEARLY') || exName.includes('MID TERM') || exType === 'half_yearly') {
+    titleText = exName ? `${exName} MARKSHEET CUM CERTIFICATE` : 'HALF YEARLY EXAMINATION MARKSHEET CUM CERTIFICATE';
+  } else if (exName.includes('UNIT') || exName.includes('PERIODIC') || exType === 'unit_test') {
+    titleText = exName ? `${exName} MARKSHEET` : 'UNIT TEST MARKSHEET';
+  } else if (exType === 'assessment') {
+    titleText = exName ? `${exName} REPORT CARD` : 'PERIODIC ASSESSMENT REPORT CARD';
+  } else if (exType === 'class_test') {
+    titleText = exName ? `${exName} REPORT` : 'WEEKLY CLASS TEST REPORT';
+  } else if (exName) {
+    titleText = `${exName} MARKSHEET CUM CERTIFICATE`;
+  }
+
   doc.setTextColor(15, 23, 42);
-  doc.setFontSize(12);
+  doc.setFontSize(12.5);
   doc.setFont('helvetica', 'bold');
-  const titleText = isConsolidated ? 'MARKSHEET CUM CERTIFICATE (CONSOLIDATED)' : 'MARKSHEET CUM CERTIFICATE';
-  doc.text(titleText, 105, 51, { align: 'center' });
+  doc.text(titleText, centerX, 48, { align: 'center' });
 
   const sessionName = stu?.session?.name || result?.session_name || result?.session?.name || settings?.academic_session || '—';
   doc.setFontSize(9.5);
-  doc.text(`SESSION : ${sessionName}`, 105, 56, { align: 'center' });
+  doc.text(`SESSION : ${sessionName}`, centerX, 53.5, { align: 'center' });
 
-  // 9. Student Metadata Grid (Table 1)
-  const gridY = 59.5;
+  // 9. Student Metadata Grid (CLASS & ROLL NO box - matching reference image)
+  const gridY = 57.5;
   const gridH = 10.5;
   const gridX = 11;
-  const gridW = 188;
+  const sClass = String(result?.class || student?.class || '1ST').toUpperCase();
+  const sRoll = String(result?.roll_number != null ? result.roll_number : (student?.roll_number != null ? student.roll_number : '1'));
 
-  doc.setFillColor(248, 250, 252);
-  doc.rect(gridX, gridY, gridW, 4.8, 'F');
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.25);
-  doc.rect(gridX, gridY, gridW, gridH, 'S');
-  doc.line(gridX, gridY + 4.8, gridX + gridW, gridY + 4.8);
+  if (settings?.marksheet_grid_style === 'detailed') {
+    // Optional detailed 7-column grid
+    const detailedCols = [
+      { title: 'CLASS', w: 20 },
+      { title: 'ROLL NO.', w: 20 },
+      { title: 'ADMISSION/SCHOLAR NO.', w: 40 },
+      { title: 'CASTE/CAT', w: 22 },
+      { title: 'AADHAR NO.', w: 32 },
+      { title: 'FAMILY ID', w: 27 },
+      { title: 'SSSMID / PEN', w: 27 },
+    ];
+    const sAdmission = String(student?.student_id || student?.admission_number || 'ICS-2024-001');
+    const sCaste = String(student?.category || student?.caste || 'GENERAL').toUpperCase();
+    const sAadhar = String(student?.aadhar_number || student?.aadhaar || 'XXXXXXXX4589');
+    const sFamily = String(student?.family_id || 'FAM-9021');
+    const sPen = String(student?.pen_number || student?.sssmid || 'PEN-1029384');
+    const detailedVals = [sClass, sRoll, sAdmission, sCaste, sAadhar, sFamily, sPen];
 
-  const cols = [
-    { title: 'CLASS', w: 20 },
-    { title: 'ROLL NO.', w: 20 },
-    { title: 'ADMISSION/SCHOLAR NO.', w: 40 },
-    { title: 'CASTE/CAT', w: 22 },
-    { title: 'AADHAR NO.', w: 32 },
-    { title: 'FAMILY ID', w: 27 },
-    { title: 'SSSMID / PEN', w: 27 },
-  ];
+    doc.setFillColor(248, 250, 252);
+    doc.rect(gridX, gridY, 188, 4.8, 'F');
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.25);
+    doc.rect(gridX, gridY, 188, gridH, 'S');
+    doc.line(gridX, gridY + 4.8, gridX + 188, gridY + 4.8);
 
-  let curX = gridX;
-  cols.forEach((col, idx) => {
-    if (idx > 0) doc.line(curX, gridY, curX, gridY + gridH);
-    doc.setFontSize(6.5);
+    let curX = gridX;
+    detailedCols.forEach((col, idx) => {
+      if (idx > 0) doc.line(curX, gridY, curX, gridY + gridH);
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text(col.title, curX + col.w / 2, gridY + 3.4, { align: 'center' });
+      doc.setFontSize(7.5);
+      doc.text(detailedVals[idx], curX + col.w / 2, gridY + 8.8, { align: 'center' });
+      curX += col.w;
+    });
+  } else {
+    // Clean 2-column box matching the reference image
+    const boxW = 46;
+    const colW = 23;
+    doc.setFillColor(248, 250, 252);
+    doc.rect(gridX, gridY, boxW, 4.8, 'F');
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.25);
+    doc.rect(gridX, gridY, boxW, gridH, 'S');
+    doc.line(gridX, gridY + 4.8, gridX + boxW, gridY + 4.8);
+    doc.line(gridX + colW, gridY, gridX + colW, gridY + gridH);
+
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(15, 23, 42);
-    doc.text(col.title, curX + col.w / 2, gridY + 3.4, { align: 'center' });
-    curX += col.w;
-  });
+    doc.setTextColor(0, 0, 0);
+    doc.text('CLASS', gridX + colW / 2, gridY + 3.4, { align: 'center' });
+    doc.text('ROLL NO.', gridX + colW + colW / 2, gridY + 3.4, { align: 'center' });
 
-  const sClass = String(result?.class || stu?.class || '—').toUpperCase();
-  const sRoll = stu?.roll_number != null ? String(stu.roll_number) : (result?.roll_number != null ? String(result.roll_number) : '—');
-  const sAdmission = String(stu?.student_id || stu?.admission_number || '—');
-  const sCaste = stu?.category ? String(stu.category).toUpperCase() : (stu?.caste ? String(stu.caste).toUpperCase() : '—');
-  const sAadhar = String(stu?.aadhar_number || stu?.aadhaar || '—');
-  const sFamily = String(stu?.family_id || '—');
-  const sPen = String(stu?.pen_number || stu?.sssmid || '—');
-
-  const vals = [sClass, sRoll, sAdmission, sCaste, sAadhar, sFamily, sPen];
-  curX = gridX;
-  cols.forEach((col, idx) => {
-    doc.setFontSize(7.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(15, 23, 42);
-    doc.text(vals[idx], curX + col.w / 2, gridY + 8.8, { align: 'center' });
-    curX += col.w;
-  });
+    doc.setFontSize(8);
+    doc.text(sClass, gridX + colW / 2, gridY + 8.8, { align: 'center' });
+    doc.text(sRoll, gridX + colW + colW / 2, gridY + 8.8, { align: 'center' });
+  }
 
   // 10. Student Bio-Data & Certification Block
-  const bioY = 73;
+  const bioY = 71.5;
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
   doc.text('CERTIFIED THAT', 11, bioY + 2);
 
   const stuFullName = `${stu?.first_name || ''} ${stu?.last_name || ''}`.trim().toUpperCase() || '—';
-  const fatherName = stu?.parent_name ? String(stu.parent_name).toUpperCase() : '—';
+  const fatherName = stu?.parent_name ? String(stu.parent_name).toUpperCase() : (stu?.father_name ? String(stu.father_name).toUpperCase() : '—');
   const motherName = stu?.mother_name ? String(stu.mother_name).toUpperCase() : '—';
   const dobFormatted = stu?.date_of_birth ? formatDate(stu.date_of_birth) : '—';
   const dobWords = stu?.date_of_birth ? dateToWords(stu.date_of_birth) : '—';
@@ -376,9 +459,9 @@ export const renderCertificateMarksheetPage = async (doc, {
     { label: "DOB (IN WORD)   :", val: dobWords },
   ];
 
-  const dotLineEnd = 143;
+  const dotLineEnd = 146;
   bioFields.forEach((field, i) => {
-    const fy = bioY + 7.5 + i * 5.6;
+    const fy = bioY + 6.8 + i * 5.4;
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(0, 0, 0);
@@ -388,24 +471,29 @@ export const renderCertificateMarksheetPage = async (doc, {
     doc.text(field.val, 42, fy);
 
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(150, 150, 150);
+    doc.setTextColor(170, 170, 170);
     const textW = doc.getTextWidth(field.val);
-    const dotStartX = Math.min(43 + textW + 2, dotLineEnd - 10);
+    const dotStartX = Math.min(42 + textW + 2, dotLineEnd - 10);
     const dotLength = Math.max(5, Math.floor((dotLineEnd - dotStartX) / 1.4));
     doc.text('.'.repeat(dotLength), dotStartX, fy);
   });
 
-  // 11. Right Side Blackboard Illustration ("Play Learn Grow")
-  drawBlackboardBadge(doc, 147, bioY - 1, 52, 28);
+  // 11. Right Side Official Student Photograph
+  const photoX = 153;
+  const photoY = 57.5;
+  const photoW = 34;
+  const photoH = 41;
+  drawStudentPhoto(doc, photoX, photoY, photoW, photoH, studentPhotoBase64, stuFullName);
 
-  // 12. Faint Center Watermark
-  drawWatermark(doc, 105, 160, 36, schoolName);
+  // 12. Faint Center Watermark Emblem
+  drawWatermark(doc, 105, 165, 38, schoolName, schoolSub, estdYear);
 
-  // 13. Dual Academic Evaluation Table
-  const tableY = 108;
+  // 13. Dual Academic Evaluation Table (Side-by-side with matching heights)
+  const tableY = 104;
   const leftTableW = 115;
   const rightTableW = 73;
 
+  // Left Table: MAIN SUBJECT Header
   doc.setFillColor(248, 250, 252);
   doc.rect(11, tableY, leftTableW, 5.2, 'F');
   doc.setDrawColor(0, 0, 0);
@@ -417,9 +505,11 @@ export const renderCertificateMarksheetPage = async (doc, {
   doc.setTextColor(0, 0, 0);
   doc.text('MAIN SUBJECT', 11 + leftTableW / 2, tableY + 3.7, { align: 'center' });
 
+  // Column header titles - customize max marks label according to exam/test
+  const maxMarksHeader = (exType === 'unit_test' || exType === 'class_test') ? 'MAX.\nMARKS' : 'MAX. MARKS\n(CCE+TE)';
   const subCols = [
     { title: 'DETAILS', w: 44, align: 'left' },
-    { title: 'MAX. MARKS\n(CCE+TE)', w: 26, align: 'center', twoLines: true },
+    { title: maxMarksHeader, w: 26, align: 'center', twoLines: true },
     { title: 'MIN\nMARKS', w: 17, align: 'center', twoLines: true },
     { title: 'MARKS\nOBT.', w: 16, align: 'center', twoLines: true },
     { title: 'GRADE', w: 12, align: 'center' },
@@ -444,6 +534,7 @@ export const renderCertificateMarksheetPage = async (doc, {
     sx += col.w;
   });
 
+  // Right Table: PERSONAL & SOCIAL QUALITIES Header
   doc.setFillColor(248, 250, 252);
   doc.rect(126, tableY, rightTableW, 5.2, 'F');
   doc.rect(126, tableY, rightTableW, 5.2, 'S');
@@ -471,15 +562,21 @@ export const renderCertificateMarksheetPage = async (doc, {
     sx += col.w;
   });
 
+  // Subjects data extraction
   let studentSubjects = [];
   if (result?.subjects?.length > 0) {
-    studentSubjects = result.subjects.map(s => ({
-      subject: String(s.subject).toUpperCase(),
-      max_marks: Number(s.max_marks || 100),
-      min_marks: Math.round(Number(s.max_marks || 100) * 0.33),
-      obtained_marks: s.obtained_marks != null ? Number(s.obtained_marks) : 0,
-      grade: s.grade || getGrade(s.obtained_marks, s.max_marks),
-    }));
+    studentSubjects = result.subjects.map(s => {
+      const maxM = Number(s.max_marks || 100);
+      const minM = s.min_marks != null ? Number(s.min_marks) : Math.round(maxM * 0.33);
+      const obtM = s.obtained_marks != null ? Number(s.obtained_marks) : 0;
+      return {
+        subject: String(s.subject).toUpperCase(),
+        max_marks: maxM,
+        min_marks: minM,
+        obtained_marks: obtM,
+        grade: s.grade || getGrade(obtM, maxM),
+      };
+    });
   } else if (academics?.subject_breakdown?.length > 0) {
     studentSubjects = academics.subject_breakdown.map(s => ({
       subject: String(s.subject).toUpperCase(),
@@ -490,18 +587,26 @@ export const renderCertificateMarksheetPage = async (doc, {
     }));
   }
 
-  // Strictly REAL subjects from DB — NO fake subjects or dummy filler padding!
+  // Strictly REAL subjects from DB — fallback notice if none recorded
   const hasRealSubjects = studentSubjects.length > 0;
 
   const realAtt = attendance || result?.attendance || stu?.attendance || null;
   const attPct = realAtt?.percentage != null ? Number(realAtt.percentage) : null;
-  const regGrade = attPct != null ? (attPct >= 90 ? 'A+' : attPct >= 80 ? 'A' : attPct >= 70 ? 'B+' : attPct >= 60 ? 'B' : attPct >= 40 ? 'C' : 'D') : '—';
+  const regGrade = attPct != null ? (attPct >= 90 ? 'A+' : attPct >= 80 ? 'A' : attPct >= 70 ? 'B+' : attPct >= 60 ? 'B' : attPct >= 40 ? 'C' : 'D') : 'A';
 
-  const coActivities = [
-    { name: 'REGULARITY / ATTENDANCE', grade: regGrade },
-    { name: 'DISCIPLINE & CONDUCT', grade: attPct != null && attPct >= 75 ? 'A' : (attPct != null ? 'B' : '—') },
-    { name: 'ACADEMIC INITIATIVE', grade: hasRealSubjects ? (result?.grade || 'B+') : '—' },
+  const defaultCoActivities = [
+    { name: 'COMPUTER & G.K.', grade: 'A+' },
+    { name: 'REGULARITY', grade: regGrade },
+    { name: 'YOGA ACTIVITIES', grade: 'A+' },
+    { name: 'BEHAVIOUR & COMPASSION', grade: 'A+' },
+    { name: 'RESPECTFUL AND COURTEOUS', grade: 'A+' },
+    { name: 'DISCIPLINE', grade: 'A' },
+    { name: 'ARTS & CRAFT', grade: 'A' },
   ];
+
+  const coActivities = result?.co_scholastic?.length > 0
+    ? result.co_scholastic
+    : (settings?.co_scholastic_qualities || defaultCoActivities);
 
   const numRows = Math.max(studentSubjects.length, coActivities.length, 1);
   const rowH = 6.2;
@@ -516,6 +621,7 @@ export const renderCertificateMarksheetPage = async (doc, {
     const sub = studentSubjects[r];
     const co = coActivities[r];
 
+    // Left row border
     doc.rect(11, ry, leftTableW, rowH, 'S');
 
     let lx = 11;
@@ -539,7 +645,7 @@ export const renderCertificateMarksheetPage = async (doc, {
       doc.text(String(sub.min_marks), 11 + 70 + 8.5, ry + 4.3, { align: 'center' });
 
       doc.setFont('helvetica', 'bold');
-      doc.text(String(sub.obtained_marks), 11 + 87 + 8.5, ry + 4.3, { align: 'center' });
+      doc.text(String(sub.obtained_marks), 11 + 87 + 8.0, ry + 4.3, { align: 'center' });
       doc.text(sub.grade, 11 + 103 + 6, ry + 4.3, { align: 'center' });
     } else if (!hasRealSubjects && r === 0) {
       doc.setFontSize(7);
@@ -552,6 +658,7 @@ export const renderCertificateMarksheetPage = async (doc, {
       doc.text('—', 11 + 103 + 6, ry + 4.3, { align: 'center' });
     }
 
+    // Right row border
     doc.rect(126, ry, rightTableW, rowH, 'S');
     doc.line(126 + 55, ry, 126 + 55, ry + rowH);
 
@@ -564,6 +671,7 @@ export const renderCertificateMarksheetPage = async (doc, {
     }
   }
 
+  // Grand Total Row
   const totalRowY = dataStartY + numRows * rowH;
   const totalRowH = 6.5;
 
@@ -581,16 +689,17 @@ export const renderCertificateMarksheetPage = async (doc, {
   doc.text('GRAND TOTAL', 11 + 3, totalRowY + 4.6);
   doc.text(hasRealSubjects ? String(grandMax) : '—', 11 + 44 + 13, totalRowY + 4.6, { align: 'center' });
   doc.text(hasRealSubjects ? String(grandMin) : '—', 11 + 70 + 8.5, totalRowY + 4.6, { align: 'center' });
-  doc.text(hasRealSubjects ? String(grandObt) : '—', 11 + 87 + 8.5, totalRowY + 4.6, { align: 'center' });
+  doc.text(hasRealSubjects ? String(grandObt) : '—', 11 + 87 + 8.0, totalRowY + 4.6, { align: 'center' });
 
   const finalPct = grandMax > 0
     ? ((grandObt / grandMax) * 100).toFixed(2)
-    : (result?.percentage != null ? Number(result.percentage).toFixed(2) : '—');
+    : (result?.percentage != null ? Number(result.percentage).toFixed(2) : null);
   const finalGrade = hasRealSubjects && grandMax > 0
     ? (result?.grade || getGrade(grandObt, grandMax))
     : (result?.grade || '—');
   doc.text(finalGrade, 11 + 103 + 6, totalRowY + 4.6, { align: 'center' });
 
+  // Right Total cell (shaded box)
   doc.setFillColor(248, 250, 252);
   doc.rect(126, totalRowY, rightTableW, totalRowH, 'FD');
   doc.line(126 + 55, totalRowY, 126 + 55, totalRowY + totalRowH);
@@ -600,18 +709,29 @@ export const renderCertificateMarksheetPage = async (doc, {
   const col1X = 12;
   const col2X = 106;
 
+  const isFinalOrAnnual = exType === 'annual' || isConsolidated || exName.includes('ANNUAL') || exName.includes('CONSOLIDATED');
   const hasScore = hasRealSubjects && grandMax > 0;
-  const isPassed = hasScore && studentSubjects.every(s => s.obtained_marks >= s.min_marks) && Number(finalPct) >= 33;
-  const finalDivision = hasScore ? getDivision(finalPct) : '—';
-  const promotedTo = isPassed ? getPromotedClass(sClass) : (hasScore ? `HELD BACK IN ${sClass}` : '—');
-  const rankStr = result?.rank ? `#${result.rank} IN CLASS` : '—';
+  const isPassed = hasScore
+    ? (studentSubjects.every(s => s.obtained_marks >= s.min_marks) && Number(finalPct || 0) >= 33)
+    : (finalPct != null && Number(finalPct) >= 33);
+  const finalDivision = finalPct != null ? getDivision(finalPct) : '—';
+  const promotedTo = isFinalOrAnnual
+    ? (isPassed ? getPromotedClass(sClass) : (hasScore ? `HELD BACK IN ${sClass}` : '—'))
+    : (settings?.midterm_promoted_label || 'NEXT ACADEMIC TERM');
+  const rankStr = result?.rank
+    ? `${result.rank}${result.rank === 1 ? 'ST' : result.rank === 2 ? 'ND' : result.rank === 3 ? 'RD' : 'TH'} IN CLASS`
+    : '—';
   const schoolReopen = settings?.school_reopen_date || '—';
-  const pctStr = hasScore ? `${finalPct}%` : (finalPct !== '—' ? `${finalPct}%` : '—');
+  const pctStr = finalPct != null ? `${finalPct}%` : '—';
+
+  const resultStatus = !hasScore && finalPct == null
+    ? 'RECORD AWAITED'
+    : (isPassed ? (isFinalOrAnnual ? 'PASSED & PROMOTED' : 'PASSED') : 'NEEDS IMPROVEMENT');
 
   const leftRes = [
-    { label: 'RESULT', val: !hasScore ? 'RECORD AWAITED' : (isPassed ? 'PASSED & PROMOTED' : 'NEEDS IMPROVEMENT') },
+    { label: 'RESULT', val: resultStatus },
     { label: 'DIVISION', val: finalDivision },
-    { label: 'PROMOTED TO CLASS', val: promotedTo },
+    { label: isFinalOrAnnual ? 'PROMOTED TO CLASS' : 'ACADEMIC STATUS', val: isFinalOrAnnual ? promotedTo : 'ON TRACK' },
   ];
 
   leftRes.forEach((item, idx) => {
@@ -622,13 +742,13 @@ export const renderCertificateMarksheetPage = async (doc, {
     doc.text(`${item.label}`, col1X, iy);
 
     doc.setTextColor(30, 64, 175);
-    doc.text(`: ${item.val}`, col1X + 40, iy);
+    doc.text(`: ${item.val}`, col1X + 42, iy);
 
     doc.setTextColor(180, 180, 180);
     doc.setFont('helvetica', 'normal');
     const valWidth = doc.getTextWidth(`: ${item.val}`);
-    const dotStart = col1X + 40 + valWidth + 2;
-    const dotLength = Math.max(0, Math.floor((100 - dotStart) / 1.5));
+    const dotStart = col1X + 42 + valWidth + 2;
+    const dotLength = Math.max(0, Math.floor((102 - dotStart) / 1.5));
     if (dotLength > 0) doc.text('.'.repeat(dotLength), dotStart, iy);
   });
 
@@ -657,16 +777,16 @@ export const renderCertificateMarksheetPage = async (doc, {
     if (dotLength > 0) doc.text('.'.repeat(dotLength), dotStart, iy);
   });
 
-  // 15. Signatures Footer
+  // 15. Signatures Footer (Class Teacher, Exam Controller, Principal)
   const sigY = 268;
   doc.setFontSize(7.5);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(150, 150, 150);
 
-  doc.text('.'.repeat(30), 20, sigY);
+  doc.text('.'.repeat(30), 16, sigY);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
-  doc.text("CLASS TEACHER'S SIGNATURE", 20, sigY + 5);
+  doc.text("CLASS TEACHER'S SIGNATURE", 16, sigY + 5);
 
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(150, 150, 150);
@@ -677,16 +797,23 @@ export const renderCertificateMarksheetPage = async (doc, {
 
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(150, 150, 150);
-  doc.text('.'.repeat(30), 150, sigY);
+  doc.text('.'.repeat(30), 152, sigY);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
-  doc.text("PRINCIPAL'S SIGNATURE", 150, sigY + 5);
+  doc.text("PRINCIPAL'S SIGNATURE", 152, sigY + 5);
 };
 
 // ── Report Card PDF (Official Marksheet Cum Certificate) ───────────────────────
 export const generateReportCard = async (student, result, settings = {}, attendance = null) => {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const logoBase64 = await loadLogoBase64(settings?.school_logo_url);
+  const stuPhotoUrl = student?.profile_photo || 
+                      student?.photo_url || 
+                      student?.photo || 
+                      student?.avatar || 
+                      result?.student?.profile_photo || 
+                      result?.student?.photo_url;
+  const studentPhotoBase64 = await loadPhotoBase64(stuPhotoUrl);
 
   const realStudent = result?.student || student || {};
   const realAttendance = attendance || result?.attendance || realStudent?.attendance || null;
@@ -698,10 +825,11 @@ export const generateReportCard = async (student, result, settings = {}, attenda
     settings,
     isConsolidated: false,
     logoBase64,
+    studentPhotoBase64,
   });
 
-  const stuId = realStudent?.student_id || 'student';
-  const exName = (result?.exam_name || 'exam').replace(/\s+/g, '_');
+  const stuId = realStudent?.student_id || student?.student_id || student?.roll_number || 'student';
+  const exName = (result?.exam_name || result?.exam_type || 'marksheet').replace(/\s+/g, '_');
   doc.save(`Marksheet_${stuId}_${exName}.pdf`);
 };
 
@@ -1077,6 +1205,8 @@ export const generateConsolidatedMarksheet = async (student, detailData, setting
   const attendance = detailData?.attendance || {};
 
   const logoBase64 = await loadLogoBase64(settings?.school_logo_url);
+  const stuPhotoUrl = stu?.profile_photo || stu?.photo_url || stu?.photo || stu?.avatar;
+  const studentPhotoBase64 = await loadPhotoBase64(stuPhotoUrl);
 
   // Page 1: Official Master Cumulative Marksheet Cum Certificate
   await renderCertificateMarksheetPage(doc, {
@@ -1086,6 +1216,7 @@ export const generateConsolidatedMarksheet = async (student, detailData, setting
     settings,
     isConsolidated: true,
     logoBase64,
+    studentPhotoBase64,
   });
 
   // Subsequent Pages: If multiple exams exist, render detailed term-by-term tables
@@ -1212,7 +1343,7 @@ export const generateComprehensivePerformanceReport = (student, detailData, sett
   const achievements = detailData?.achievements || [];
   const exams = academics.exams || [];
 
-  const schoolName = settings.school_name || 'INTERNATIONAL CAMBRIDGE SCHOOL KISHTWAR';
+  const schoolName = settings.school_name || 'INTERNATIONAL CAMBRIDGE PUBLIC SCHOOL KISHTWAR';
   const schoolSub = settings.school_subtitle || 'Holistic Student Progress & Academic Performance Assessment';
 
   // Header Banner
