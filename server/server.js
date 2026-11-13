@@ -1,4 +1,5 @@
 const path = require('path');
+const fs = require('fs');
 const express = require('express');
 const compression = require('compression');
 const cors = require('cors');
@@ -248,7 +249,34 @@ app.get('/api/seed-demo-data', async (req, res) => {
 // Any request that doesn't match an API route gets the React app's index.html,
 // allowing React Router to handle client-side routing.
 app.get('*', (req, res) => {
-  res.sendFile(path.join(clientBuildPath, 'index.html'));
+  const indexPath = path.join(clientBuildPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
+  return res.status(200).send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Cambridge ERP - Server Online</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #f8fafc; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+    .card { background: #1e293b; padding: 2rem 3rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; max-width: 520px; }
+    h1 { color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.5rem; }
+    p { color: #94a3b8; font-size: 0.95rem; line-height: 1.6; }
+    .badge { display: inline-block; background: #059669; color: #fff; padding: 0.25rem 0.75rem; border-radius: 9999px; font-weight: 600; font-size: 0.85rem; margin-bottom: 1rem; }
+    a { color: #38bdf8; text-decoration: none; font-weight: 500; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="badge">API Status: Running</div>
+    <h1>Cambridge School ERP</h1>
+    <p>The backend server is online and operational. The frontend build is being prepared.</p>
+    <p>Check API status: <a href="/api/health">/api/health</a> | Database: <a href="/api/db-check">/api/db-check</a></p>
+  </div>
+</body>
+</html>`);
 });
 
 // ── Dedicated Error Handler (L6, M10) ──────────────────────────────────────────
