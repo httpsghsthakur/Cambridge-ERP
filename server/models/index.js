@@ -26,6 +26,9 @@ const SecurityLog        = require('./SecurityLog');
 const ExamDatesheet      = require('./ExamDatesheet');
 const ExamDatesheetEntry = require('./ExamDatesheetEntry');
 const StudentAchievement = require('./StudentAchievement');
+const CentralConfig      = require('./CentralConfig');
+const CentralSyncLog     = require('./CentralSyncLog');
+const CentralCommandLog  = require('./CentralCommandLog');
 
 // ── Associations ──────────────────────────────────────────────────────────────
 
@@ -194,5 +197,8 @@ module.exports = {
   SecurityLog,
   ExamDatesheet,
   ExamDatesheetEntry,
-  StudentAchievement
+  StudentAchievement,
+  CentralConfig,
+  CentralSyncLog,
+  CentralCommandLog
 };

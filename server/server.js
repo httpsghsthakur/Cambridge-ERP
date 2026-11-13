@@ -119,6 +119,11 @@ app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 const csrfProtection = require('./middleware/csrf');
 app.use('/api', csrfProtection);
 
+const { entitlementCheck } = require('./middleware/entitlementCheck');
+app.use(entitlementCheck);
+
+app.use('/api/central', require('./routes/central'));
+
 app.use('/api/class-subjects', classSubjectRoutes);
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/students', require('./routes/students'));

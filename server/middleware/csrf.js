@@ -8,10 +8,10 @@ const csrfProtection = (req, res, next) => {
     return next();
   }
 
-  // Exclude login and register routes from CSRF
-  const excludedPaths = ['/api/auth/login', '/api/auth/register'];
+  // Exclude login, register, and central server-to-server webhook routes from CSRF
+  const excludedPaths = ['/api/auth/login', '/api/auth/register', '/api/central/webhook'];
   const reqPath = req.originalUrl.split('?')[0].replace(/\/+$/, '');
-  if (excludedPaths.includes(reqPath)) {
+  if (excludedPaths.includes(reqPath) || reqPath.startsWith('/api/central/webhook')) {
     return next();
   }
 
