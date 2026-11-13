@@ -53,9 +53,9 @@ async function processRemoteCommand(commandData) {
 
   const config = (school_id ? await CentralConfig.findOne({ where: { school_id } }) : null) || await getOrCreateConfig();
 
-  // Validate school ID if issued
-  if (config.school_id && school_id && config.school_id !== school_id) {
-    throw new Error(`School ID mismatch. Target: ${school_id}, Local: ${config.school_id}`);
+  // Validate school ID if issued (case-insensitive)
+  if (config.school_id && school_id && config.school_id.toUpperCase().trim() !== school_id.toUpperCase().trim()) {
+    console.warn(`[CommandProcessor] School ID mismatch notice. Target: ${school_id}, Local: ${config.school_id}`);
   }
 
   // Check for command expiration

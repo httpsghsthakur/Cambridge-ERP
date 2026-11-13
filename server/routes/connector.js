@@ -193,28 +193,64 @@ router.get('/status', async (req, res) => {
   }
 });
 
+// GET /api/v1/connector/suspension-status - Check if service is suspended
+router.get('/suspension-status', async (req, res) => {
+  try {
+    const config = await getOrCreateConfig();
+    res.json({
+      success: true,
+      school_id: config.school_id,
+      is_suspended: !!config.is_suspended,
+      suspension_reason: config.suspension_reason,
+      suspended_at: config.suspended_at,
+      status: config.is_suspended ? 'suspended' : 'connected'
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // POST /api/v1/connector/suspend - Remote suspension command
 router.post('/suspend', async (req, res) => {
   try {
-    const { reason = 'This school management service is temporarily inactive. Please contact the platform administrator.' } = req.body || {};
+    const reason = req.body?.payload?.reason || req.body?.reason || 'This school management service is temporarily inactive. Please contact the platform administrator.';
     const config = await getOrCreateConfig();
+    const commandId = req.body?.command_id || `cmd-susp-${Date.now()}`;
+    const issuedBy = req.body?.issued_by || 'central_platform_admin';
+
     await config.update({
       is_suspended: true,
       suspension_reason: reason,
       suspended_at: new Date(),
       connection_status: 'suspended',
     });
+    await Setting.upsert({ key: 'central_suspension_status', value: 'SUSPENDED' }).catch(() => {});
+
     const { invalidateSuspensionCache } = require('../middleware/entitlementCheck');
     invalidateSuspensionCache();
+
+    const { CentralCommandLog } = require('../models');
+    await CentralCommandLog.create({
+      command_id: commandId,
+      command_type: 'SUSPEND_SERVICE',
+      issued_by: issuedBy,
+      status: 'executed',
+      payload: JSON.stringify(req.body || {}),
+      result: JSON.stringify({ suspended: true, reason, data_preserved: true }),
+      executed_at: new Date(),
+    }).catch(() => {});
 
     res.json({
       success: true,
       message: 'School ERP has been remotely suspended. All student/teacher data preserved safely.',
       school_id: config.school_id,
+      command_id: commandId,
+      command_type: 'SUSPEND_SERVICE',
       is_suspended: true,
       suspension_reason: reason,
       suspended_at: config.suspended_at,
-      data_preserved: true
+      data_preserved: true,
+      status: 'suspended'
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -225,19 +261,37 @@ router.post('/suspend', async (req, res) => {
 router.post('/reactivate', async (req, res) => {
   try {
     const config = await getOrCreateConfig();
+    const commandId = req.body?.command_id || `cmd-react-${Date.now()}`;
+    const issuedBy = req.body?.issued_by || 'central_platform_admin';
+
     await config.update({
       is_suspended: false,
       suspension_reason: null,
       suspended_at: null,
       connection_status: 'connected',
     });
+    await Setting.upsert({ key: 'central_suspension_status', value: 'ACTIVE' }).catch(() => {});
+
     const { invalidateSuspensionCache } = require('../middleware/entitlementCheck');
     invalidateSuspensionCache();
+
+    const { CentralCommandLog } = require('../models');
+    await CentralCommandLog.create({
+      command_id: commandId,
+      command_type: 'REACTIVATE_SERVICE',
+      issued_by: issuedBy,
+      status: 'executed',
+      payload: JSON.stringify(req.body || {}),
+      result: JSON.stringify({ suspended: false, status: 'connected' }),
+      executed_at: new Date(),
+    }).catch(() => {});
 
     res.json({
       success: true,
       message: 'School ERP has been remotely reactivated. Normal operations resumed.',
       school_id: config.school_id,
+      command_id: commandId,
+      command_type: 'REACTIVATE_SERVICE',
       is_suspended: false,
       status: 'connected'
     });
