@@ -71,14 +71,14 @@ export default function AttendanceForm({
               ${current === 'absent' ? 'bg-red-50 border-red-100' :
                 current === 'late'  ? 'bg-yellow-50 border-yellow-100' :
                 'bg-gray-50 border-gray-100'}`}>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
                 <span className="text-xs text-gray-400 w-5">{s.roll_number}</span>
                 <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold flex items-center justify-center">
                   {s.first_name?.[0]}
                 </div>
-                <span className="text-sm font-medium text-gray-700">{s.first_name} {s.last_name}</span>
+                <span className="text-sm font-medium text-gray-700 truncate">{s.first_name} {s.last_name}</span>
               </div>
-              <div className="flex gap-1">
+              <div className="flex gap-1 flex-shrink-0">
                 {Object.entries(statusConfig).map(([status, cfg]) => (
                   <button
                     key={status}

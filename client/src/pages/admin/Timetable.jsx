@@ -849,7 +849,7 @@ export default function Timetable() {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-3 mt-4 lg:mt-0 items-end">
+        <div className="flex flex-wrap gap-2.5 sm:gap-3 mt-4 lg:mt-0 items-end w-full lg:w-auto">
           {/* Copy Timetable Button */}
           {canEdit && (
             <button
@@ -992,7 +992,7 @@ export default function Timetable() {
         {/* Left Column: Timetable Grid */}
         <div className="flex-1 bg-white p-3 rounded-2xl shadow-sm border border-gray-100 h-fit">
           {/* Grid Quick Header Controls */}
-          <div className="flex items-center justify-between pb-3 px-2 border-b border-gray-100 mb-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-3 px-2 border-b border-gray-100 mb-2 gap-2.5">
             <div className="flex items-center gap-3">
               <span className="text-xs font-bold text-gray-700">
                 {isCustomMode ? 'Weekly View (Custom Schedules)' : `Standard Schedule (${currentSchedule.numPeriods} Periods)`}

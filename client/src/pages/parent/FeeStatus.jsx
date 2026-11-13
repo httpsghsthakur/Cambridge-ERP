@@ -379,8 +379,8 @@ export default function FeeStatus() {
               { label: 'Admission Fee', val: classStructure.admission_fee },
               { label: 'Promotion Fee', val: classStructure.promotion_fee },
               { label: 'Exam Fee', val: classStructure.exam_fee },
-            ].map((item) => (
-              <div key={item.label} className="bg-white/10 rounded-xl px-3 py-2.5">
+            ].map((item, idx) => (
+              <div key={item.label} className={`bg-white/10 rounded-xl px-3 py-2.5 ${idx === 4 ? 'col-span-2 sm:col-span-1' : ''}`}>
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-300">{item.label}</p>
                 <p className="text-base font-extrabold text-white mt-0.5">{formatCurrency(item.val || 0)}</p>
               </div>

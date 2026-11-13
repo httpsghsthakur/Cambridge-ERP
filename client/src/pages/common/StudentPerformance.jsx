@@ -201,7 +201,7 @@ export default function StudentPerformance() {
   return (
     <div className="space-y-6 pb-12">
       {/* Header Banner - Cambridge Navy with Gold Accent */}
-      <div className="bg-gradient-to-r from-[#0a1226] via-[#101e42] to-[#1e3a8a] text-white rounded-2xl p-6 shadow-xl relative overflow-hidden border-b-4 border-yellow-400">
+      <div className="bg-gradient-to-r from-[#0a1226] via-[#101e42] to-[#1e3a8a] text-white rounded-2xl p-4 sm:p-6 shadow-xl relative overflow-hidden border-b-4 border-yellow-400">
         <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-yellow-400/5 skew-x-12 pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -406,7 +406,7 @@ export default function StudentPerformance() {
           </div>
 
           {/* View toggle */}
-          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl self-end md:self-auto">
+          <div className="flex items-center justify-center gap-1 bg-gray-100 p-1 rounded-xl self-stretch sm:self-auto">
             <button
               onClick={() => setViewMode('table')}
               className={`p-2 rounded-lg text-sm transition ${viewMode === 'table' ? 'bg-white shadow-sm text-blue-600 font-medium' : 'text-gray-500 hover:text-gray-700'}`}
@@ -811,12 +811,12 @@ export default function StudentPerformance() {
                     <span>Official Documents &amp; Academic Records Export</span>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 w-full sm:w-auto">
                     {/* Download Marksheet of All Exams */}
                     <button
                       onClick={handleDownloadAllMarksheets}
                       disabled={pdfGenerating}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition shadow-sm disabled:opacity-50"
+                      className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition shadow-sm disabled:opacity-50 w-full sm:w-auto"
                       title="Download Official Consolidated Marksheet of All Exams"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -829,7 +829,7 @@ export default function StudentPerformance() {
                     <button
                       onClick={handleDownloadFullReport}
                       disabled={pdfGenerating}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-sm disabled:opacity-50"
+                      className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-sm disabled:opacity-50 w-full sm:w-auto"
                       title="Download Full Student Performance Evaluation Dossier"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

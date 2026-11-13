@@ -96,7 +96,7 @@ export default function CentralIntegration() {
   const schoolId = config.school_id || customSchoolId || 'SCH-2026-01001';
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6">
       {/* Title & Description */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Centralized Platform School Identifier</h1>
@@ -108,7 +108,7 @@ export default function CentralIntegration() {
       {/* Main School ID Card */}
       <div className="bg-white rounded-2xl shadow-sm border border-blue-200 overflow-hidden">
         {/* Card Header */}
-        <div className="bg-gradient-to-r from-blue-900 via-blue-800 to-indigo-900 px-6 py-6 text-white flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="bg-gradient-to-r from-blue-900 via-blue-800 to-indigo-900 p-4 sm:p-6 text-white flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -136,7 +136,7 @@ export default function CentralIntegration() {
         </div>
 
         {/* Card Body */}
-        <div className="p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-6">
           {/* Instructions Box */}
           <div className="p-4 rounded-xl bg-blue-50/70 border border-blue-100 flex items-start gap-3">
             <div className="text-2xl text-blue-600 flex-shrink-0">📋</div>
@@ -165,7 +165,7 @@ export default function CentralIntegration() {
             ) : (
               <form onSubmit={handleSaveSchoolId} className="space-y-3 bg-gray-50 p-4 rounded-xl border border-gray-200">
                 <label className="text-xs font-bold text-gray-700 block">Update School ID</label>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="text"
                     value={customSchoolId}

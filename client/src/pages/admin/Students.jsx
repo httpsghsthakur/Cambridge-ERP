@@ -86,11 +86,11 @@ export default function Students() {
     <div className="space-y-4">
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className="flex gap-2 w-full sm:w-auto">
+        <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 w-full sm:w-auto">
           <select 
             value={filterClass}
             onChange={(e) => handleFilterChange(e.target.value, filterSection, filterFeeStatus)}
-            className="flex-1 sm:w-32 bg-white border border-gray-200 text-gray-700 text-sm rounded-xl focus:ring-blue-500 focus:border-blue-500 block px-3 py-2.5"
+            className="col-span-1 sm:col-span-1 flex-1 sm:w-32 bg-white border border-gray-200 text-gray-700 text-sm rounded-xl focus:ring-blue-500 focus:border-blue-500 block px-3 py-2.5"
           >
             <option value="">All Classes</option>
             {CLASSES.map(c => (
@@ -110,7 +110,7 @@ export default function Students() {
           <select 
             value={filterFeeStatus}
             onChange={(e) => handleFilterChange(filterClass, filterSection, e.target.value)}
-            className="flex-1 sm:w-32 bg-white border border-gray-200 text-gray-700 text-sm rounded-xl focus:ring-blue-500 focus:border-blue-500 block px-3 py-2.5"
+            className="col-span-2 sm:col-span-1 flex-1 sm:w-32 bg-white border border-gray-200 text-gray-700 text-sm rounded-xl focus:ring-blue-500 focus:border-blue-500 block px-3 py-2.5"
           >
             <option value="all">All Fee Status</option>
             <option value="paid">Paid</option>

@@ -343,7 +343,7 @@ export default function Sidebar({ isOpen, onClose }) {
       {/* Mobile Drawer Overlay */}
       {isOpen && <div className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm lg:hidden" onClick={onClose} />}
       
-      <aside className={`fixed top-0 left-0 z-40 flex h-full w-64 flex-col bg-[#081024] text-slate-300 border-r border-white/5 transition-transform duration-300 ease-in-out lg:static lg:z-auto lg:flex-shrink-0 lg:translate-x-0 ${
+      <aside className={`fixed top-0 left-0 z-40 flex h-full w-72 sm:w-64 max-w-[85vw] flex-col bg-[#081024] text-slate-300 border-r border-white/5 transition-transform duration-300 ease-in-out lg:static lg:z-auto lg:flex-shrink-0 lg:translate-x-0 ${
         isOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         

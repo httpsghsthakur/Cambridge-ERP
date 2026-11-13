@@ -151,7 +151,7 @@ export default function Settings() {
             {/* Logo Image Upload */}
             <div className="space-y-1 sm:col-span-2">
               <label className="text-sm font-semibold text-gray-700">School Logo</label>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
                 {settings.school_logo_url && (
                   <img 
                     src={settings.school_logo_url} 
@@ -250,7 +250,7 @@ export default function Settings() {
                   <button
                     type="button"
                     onClick={handleCopySchoolId}
-                    className="px-3.5 py-2 text-xs font-semibold bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition shadow-sm"
+                    className="px-3.5 py-2 text-xs font-semibold bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition shadow-sm w-full sm:w-auto text-center justify-center"
                   >
                     {copied ? '✓ Copied' : 'Copy School ID'}
                   </button>
@@ -259,7 +259,7 @@ export default function Settings() {
                   type="button"
                   onClick={handleSyncRealData}
                   disabled={syncing || !settings.school_id}
-                  className="px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition disabled:opacity-50 shadow-sm"
+                  className="px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition disabled:opacity-50 shadow-sm w-full sm:w-auto text-center justify-center"
                 >
                   {syncing ? 'Sending...' : 'Sync Real Data Now'}
                 </button>

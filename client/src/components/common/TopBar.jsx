@@ -137,14 +137,14 @@ export default function TopBar({ title, onMenuClick }) {
   const profileBasePath = user?.role === 'parent' || user?.role === 'student' ? '/parent' : user?.role === 'fee_collector' ? '/fc' : `/${user?.role}`;
 
   return (
-    <header className="h-16 bg-white border-b border-slate-100 px-6 flex items-center justify-between flex-shrink-0 sticky top-0 z-20 shadow-sm shadow-slate-100/50">
+    <header className="h-16 bg-white border-b border-slate-100 px-3 sm:px-6 flex items-center justify-between flex-shrink-0 sticky top-0 z-20 shadow-sm shadow-slate-100/50">
       
       {/* Title & Breadcrumbs */}
       <div className="flex items-center gap-4">
         {/* Hamburger Mobile Toggle */}
         <button
           onClick={onMenuClick}
-          className="lg:hidden p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all"
+          className="lg:hidden p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all flex-shrink-0"
           aria-label="Open menu"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -153,8 +153,8 @@ export default function TopBar({ title, onMenuClick }) {
         </button>
 
         <div className="min-w-0">
-          <h1 className="text-base font-extrabold text-slate-800 tracking-tight leading-none">{title}</h1>
-          <div className="flex items-center gap-1.5 mt-1.5 text-[11px] font-semibold text-slate-400">
+          <h1 className="text-sm sm:text-base font-extrabold text-slate-800 tracking-tight leading-none truncate">{title}</h1>
+          <div className="hidden sm:flex items-center gap-1.5 mt-1.5 text-[11px] font-semibold text-slate-400">
             <span>{breadcrumb[0]}</span>
             <svg className="w-3 h-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -165,7 +165,7 @@ export default function TopBar({ title, onMenuClick }) {
       </div>
 
       {/* Global Actions Controls */}
-      <div className="flex items-center gap-4 sm:gap-6">
+      <div className="flex items-center gap-2 sm:gap-4 lg:gap-6 flex-shrink-0">
         
         {/* Academic Session Picker */}
         <div className="relative hidden sm:flex items-center">
@@ -194,12 +194,12 @@ export default function TopBar({ title, onMenuClick }) {
         </div>
 
         {/* Dynamic Alerts Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           
           {/* Messages Button */}
           <button 
             onClick={() => setIsMessageModalOpen(true)}
-            className="p-2.5 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all relative"
+            className="p-2 sm:p-2.5 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all relative"
             title="Send Message"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -210,7 +210,7 @@ export default function TopBar({ title, onMenuClick }) {
           {/* Notifications Bell */}
           <button 
             onClick={() => navigate(`${profileBasePath}/notifications`)}
-            className="p-2.5 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all relative"
+            className="p-2 sm:p-2.5 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all relative"
             title="View Notifications"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -225,9 +225,9 @@ export default function TopBar({ title, onMenuClick }) {
         </div>
 
         {/* User Account Info Dropdown */}
-        <div className="flex items-center gap-3 pl-3 border-l border-slate-100">
+        <div className="flex items-center gap-2.5 sm:gap-3 pl-2 sm:pl-3 border-l border-slate-100">
           <div
-            className="w-10 h-10 rounded-xl overflow-hidden shadow-inner flex-shrink-0 relative group cursor-pointer"
+            className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl overflow-hidden shadow-inner flex-shrink-0 relative group cursor-pointer"
             onClick={() => navigate(`${profileBasePath}/profile`)}
           >
             {user?.profile_photo ? (

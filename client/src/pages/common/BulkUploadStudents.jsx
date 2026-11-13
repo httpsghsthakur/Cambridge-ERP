@@ -132,7 +132,7 @@ export default function BulkUploadStudents() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-card relative overflow-hidden">
+      <div className="bg-white rounded-3xl border border-slate-100 p-4 sm:p-6 shadow-card relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10">
           <h2 className="text-xl font-extrabold text-slate-800 tracking-tight">Bulk Student Admission</h2>

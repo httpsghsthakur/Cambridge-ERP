@@ -416,7 +416,7 @@ export default function Dashboard() {
           </div>
 
           {/* Indicators Legend */}
-          <div className="flex items-center gap-6 text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-5 pl-1">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-5 pl-1">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-blue-500 block" /> Attendance ({chartStats.attendance})
             </div>

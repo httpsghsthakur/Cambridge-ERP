@@ -121,7 +121,7 @@ export default function CredentialManagement() {
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
       
       {/* Header section */}
-      <div className="border-b border-gray-100 bg-gray-50/50 p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="border-b border-gray-100 bg-gray-50/50 p-4 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-gray-800">Credential Management</h2>
           <p className="text-sm text-gray-500 mt-1">Manage system login IDs, set secure passwords, and trigger instant email alerts.</p>
@@ -160,7 +160,7 @@ export default function CredentialManagement() {
         )}
       </div>
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         
         {/* Search Controls */}
         <div className="max-w-md">

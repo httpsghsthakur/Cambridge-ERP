@@ -111,7 +111,7 @@ export default function Fees() {
 
   const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i);
 
-  const f = 'border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-500 bg-white';
+  const f = 'w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-500 bg-white';
 
   return (
     <div className="space-y-5">
@@ -126,7 +126,7 @@ export default function Fees() {
         <button
           onClick={handleSendReminders}
           disabled={sending}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-sm font-semibold rounded-xl transition-colors disabled:opacity-50"
+          className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 w-full sm:w-auto"
         >
           {sending ? (
             <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24" fill="none">
@@ -142,7 +142,7 @@ export default function Fees() {
 
       {/* Filters */}
       <div className="bg-white rounded-xl border border-gray-200 p-4">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5 sm:gap-3">
           {/* Month */}
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Month</label>
@@ -196,7 +196,7 @@ export default function Fees() {
             />
           </div>
           {/* Reset */}
-          <div className="flex items-end">
+          <div className="col-span-2 sm:col-span-1 flex items-end">
             <button
               onClick={() => { setClass(''); setSection(''); setStatus(''); setSearchQuery(''); }}
               className="w-full border border-gray-200 text-gray-500 hover:bg-gray-50 text-xs px-3 py-2 rounded-xl transition-colors"
@@ -208,15 +208,15 @@ export default function Fees() {
       </div>
 
       {/* Summary stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
         {[
           { label: 'Total Students',  val: summary.total         || 0,                      color: '' },
           { label: 'Paid',            val: summary.paid          || 0,                      color: 'text-green-600' },
           { label: 'Unpaid',          val: summary.unpaid        || 0,                      color: 'text-red-500' },
           { label: 'Partial',         val: summary.partial       || 0,                      color: 'text-yellow-600' },
           { label: 'Not Generated',   val: summary.not_generated || 0,                      color: 'text-gray-400' },
-        ].map(s => (
-          <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-3 text-center">
+        ].map((s, idx) => (
+          <div key={s.label} className={`bg-white rounded-xl border border-gray-200 p-3 text-center ${idx === 4 ? 'col-span-2 sm:col-span-1 lg:col-span-1' : ''}`}>
             <p className="text-xs text-gray-400 mb-1">{s.label}</p>
             <p className={`text-xl font-bold ${s.color}`}>{s.val}</p>
           </div>
@@ -225,7 +225,7 @@ export default function Fees() {
 
       {/* Collection summary */}
       {(summary.total_due > 0 || summary.total_paid > 0) && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-wrap gap-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-wrap gap-4 sm:gap-6">
           <div><p className="text-xs text-gray-400">Total Due</p><p className="text-lg font-bold">{formatCurrency(summary.total_due || 0)}</p></div>
           <div><p className="text-xs text-gray-400">Collected</p><p className="text-lg font-bold text-green-600">{formatCurrency(summary.total_paid || 0)}</p></div>
           <div><p className="text-xs text-gray-400">Pending</p><p className="text-lg font-bold text-red-500">{formatCurrency((summary.total_due || 0) - (summary.total_paid || 0))}</p></div>

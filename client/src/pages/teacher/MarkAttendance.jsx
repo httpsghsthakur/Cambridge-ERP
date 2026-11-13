@@ -95,13 +95,13 @@ export default function MarkAttendance() {
   const presentCount = Object.values(attendance).filter(v => v === 'present').length;
   const absentCount  = Object.values(attendance).filter(v => v === 'absent').length;
 
-  const f = 'border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 bg-white';
+  const f = 'border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 bg-white w-full';
 
   return (
     <div className="max-w-3xl space-y-5">
       {/* Controls */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
-        <div className="flex gap-3 flex-wrap items-center">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <select value={cls} onChange={e => setCls(e.target.value)} className={f}>
             {(allowedClasses.length > 0 ? allowedClasses : CLASSES).map(c => <option key={c}>{c}</option>)}
           </select>
