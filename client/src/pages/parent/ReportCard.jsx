@@ -41,7 +41,7 @@ export default function ReportCard() {
 
   const activeStudent = selected?.student || student;
   const schoolName = settings?.school_name || 'International Cambridge School Kishtwar';
-  const sessionName = activeStudent?.session?.name || selected?.session_name || settings?.academic_session || '2024-25';
+  const sessionName = activeStudent?.session?.name || selected?.session_name || settings?.academic_session || '2026-2027';
 
   return (
     <div className="space-y-4 max-w-2xl">

@@ -31,7 +31,10 @@ export default function EnterMarks() {
   const [assignments, setAssignments] = useState([]);
   
   // Selected class subject assignment
-  const [selectedAssignmentIndex, setSelectedAssignmentIndex] = useState(0);
+  const [selectedAssignmentIndex, setSelectedAssignmentIndex] = useState('0');
+  const [cls, setCls]         = useState('');
+  const [section, setSection] = useState('A');
+  const [subject, setSubject] = useState('');
   
   const [students, setStudents] = useState([]);
   const [marks, setMarks]       = useState({});
@@ -40,26 +43,52 @@ export default function EnterMarks() {
   const [maxMarks, setMaxMarks] = useState(100);
   const [isClassTest, setIsClassTest] = useState(false);
   const [saving, setSaving]     = useState(false);
+  const [loadingStudents, setLoadingStudents] = useState(false);
 
   const [results, setResults]   = useState([]);
   const [submitModal, setSubmitModal] = useState(null); // result to submit
   const [inchargeModal, setInchargeModal] = useState(null);
   const [actionNote, setActionNote] = useState('');
 
-  const SECTIONS = ['A', 'B', 'C'];
+  const SECTIONS = ['A', 'B', 'C', 'D'];
+  const COMMON_CLASSES = ['Nursery', 'LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
+  const COMMON_SUBJECTS = ['English', 'Hindi', 'Mathematics', 'Science', 'Social Studies', 'Urdu', 'Kashmiri', 'Computer Science', 'General'];
 
   useEffect(() => {
     API.get('/class-subjects/my-assignments')
       .then(res => {
-        setAssignments(res.data || []);
+        const list = res.data || [];
+        setAssignments(list);
+        if (list.length > 0) {
+          setSelectedAssignmentIndex('0');
+          setCls(list[0].class || '');
+          setSection(list[0].section || 'A');
+          setSubject(list[0].subject || 'General');
+        } else {
+          setCls('8th');
+          setSection('A');
+          setSubject(teacher?.subject ? teacher.subject.split(',')[0].trim() : 'General');
+        }
       })
-      .catch(() => toast.error('Failed to load assignments'));
-  }, []);
+      .catch(() => {
+        toast.error('Failed to load assignments');
+        setCls('8th');
+        setSection('A');
+        setSubject('General');
+      });
+  }, [teacher]);
 
-  const activeAssignment = assignments[selectedAssignmentIndex];
-  const cls = activeAssignment?.class;
-  const section = activeAssignment?.section;
-  const subject = activeAssignment?.subject;
+  const handleAssignmentChange = (e) => {
+    const val = e.target.value;
+    setSelectedAssignmentIndex(val);
+    const idx = parseInt(val, 10);
+    if (!isNaN(idx) && assignments[idx]) {
+      const a = assignments[idx];
+      setCls(a.class);
+      setSection(a.section || 'A');
+      setSubject(a.subject || 'General');
+    }
+  };
 
   useEffect(() => {
     if (!cls || !section) {
@@ -68,7 +97,8 @@ export default function EnterMarks() {
       return;
     }
     
-    API.get(`/students?class=${cls}&section=${section}`)
+    setLoadingStudents(true);
+    API.get(`/students?class=${encodeURIComponent(cls)}&section=${encodeURIComponent(section)}`)
       .then(r => {
         const list = r.data.students || [];
         setStudents(list);
@@ -76,12 +106,13 @@ export default function EnterMarks() {
         list.forEach(s => { init[s.id] = ''; });
         setMarks(init);
       })
-      .catch(() => toast.error('Failed to load students'));
+      .catch(() => toast.error('Failed to load students'))
+      .finally(() => setLoadingStudents(false));
 
-    API.get(`/results/class?class=${cls}&section=${section}`)
+    API.get(`/results/class?class=${encodeURIComponent(cls)}&section=${encodeURIComponent(section)}`)
       .then(r => setResults(r.data || []))
       .catch(() => {});
-  }, [cls, section, selectedAssignmentIndex]);
+  }, [cls, section]);
 
   const calcGrade = (obtained, max) => {
     const p = max > 0 ? (obtained / max) * 100 : 0;
@@ -103,7 +134,7 @@ export default function EnterMarks() {
           exam_type:     examType,
           class:         cls,
           section,
-          subjects: [{ subject, max_marks: parseInt(maxMarks), obtained_marks: obtained }],
+          subjects: [{ subject: subject || 'General', max_marks: parseInt(maxMarks), obtained_marks: obtained }],
           is_class_test: isClassTest,
         });
         saved++;
@@ -173,14 +204,14 @@ export default function EnterMarks() {
     <div className="space-y-5">
       {/* Controls */}
       <div className="bg-white rounded-xl border border-gray-200 p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 pb-4 border-b border-gray-100">
-          <div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 pb-4 border-b border-gray-100">
+          <div className="md:col-span-2">
             <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">
-              Select Your Assigned Class & Subject
+              Assigned Class & Subject (Quick Select)
             </label>
             <select 
               value={selectedAssignmentIndex} 
-              onChange={e => setSelectedAssignmentIndex(e.target.value)} 
+              onChange={handleAssignmentChange} 
               className={f}
             >
               {assignments.length > 0 ? (
@@ -190,30 +221,71 @@ export default function EnterMarks() {
                   </option>
                 ))
               ) : (
-                <option value="">No classes assigned to you</option>
+                <option value="">No explicit timetable assigned</option>
               )}
             </select>
           </div>
-          <div className="flex items-end">
-            <div className="w-full">
-              <label className="block text-xs font-medium text-gray-500 mb-1">Max Marks</label>
-              <input type="number" value={maxMarks} onChange={e => setMaxMarks(e.target.value)}
-                className={f} min={1} max={200} />
-            </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Class</label>
+            <select
+              value={cls}
+              onChange={e => setCls(e.target.value)}
+              className={f}
+            >
+              {[...new Set([...assignments.map(a => a.class), ...COMMON_CLASSES])].filter(Boolean).map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Section</label>
+            <select
+              value={section}
+              onChange={e => setSection(e.target.value)}
+              className={f}
+            >
+              {SECTIONS.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
-          <div className="sm:col-span-2">
-            <label className="block text-xs font-medium text-gray-500 mb-1">Exam Name *</label>
-            <input value={examName} onChange={e => setExamName(e.target.value)}
-              className={f} placeholder="e.g. Unit Test 1 — April 2025" />
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-2">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Subject</label>
+            <input
+              type="text"
+              list="common-subjects-list"
+              value={subject}
+              onChange={e => setSubject(e.target.value)}
+              className={f}
+              placeholder="e.g. Mathematics"
+            />
+            <datalist id="common-subjects-list">
+              {[...new Set([...assignments.map(a => a.subject), ...COMMON_SUBJECTS])].filter(Boolean).map(sub => (
+                <option key={sub} value={sub} />
+              ))}
+            </datalist>
           </div>
           <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Max Marks</label>
+            <input type="number" value={maxMarks} onChange={e => setMaxMarks(e.target.value)}
+              className={f} min={1} max={200} />
+          </div>
+          <div className="sm:col-span-2">
             <label className="block text-xs font-medium text-gray-500 mb-1">Exam Type</label>
             <select value={examType} onChange={e => setExamType(e.target.value)} className={f}>
               {EXAM_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 mt-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Exam Name *</label>
+            <input value={examName} onChange={e => setExamName(e.target.value)}
+              className={f} placeholder="e.g. Unit Test 1 — 2026" />
           </div>
         </div>
 
@@ -237,8 +309,10 @@ export default function EnterMarks() {
             </h3>
             <span className="text-xs text-gray-400">{students.length} students</span>
           </div>
-          {students.length === 0 ? (
-            <p className="text-center text-gray-400 py-8 text-sm">No students found.</p>
+          {loadingStudents ? (
+            <p className="text-center text-gray-400 py-8 text-sm">Loading students...</p>
+          ) : students.length === 0 ? (
+            <p className="text-center text-gray-400 py-8 text-sm">No students found for Class {cls || '—'} {section || ''}.</p>
           ) : (
             <>
               <div className="divide-y divide-gray-50 max-h-96 overflow-y-auto">

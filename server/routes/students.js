@@ -4,7 +4,7 @@ const { Op }  = require('sequelize');
 const { Student, Session, User, Teacher, ClassIncharge, Attendance, Result, ResultSubject, StudentAchievement, PromotionHistory, Fee } = require('../models');
 const { buildStudentSessionAttendance } = require('../utils/attendanceSessionHelper');
 
-const { getTeacherAllowedClasses } = require('../utils/teacherAllowedClasses');
+const { getTeacherAllowedClasses, isClassMatch } = require('../utils/teacherAllowedClasses');
 const { protect, hasPermission, isSuperAdmin, authorize } = require('../middleware/auth');
 const { createAdmissionFee } = require('../services/feeService');
 const { makeStudentId, makeStudentEmail, makeTemporaryPassword } = require('../utils/credentialGenerator');
@@ -59,10 +59,11 @@ router.get('/', protect, hasPermission('VIEW_STUDENTS'), async (req, res) => {
     if (req.user.role === 'teacher') {
       const allowedClasses = await getTeacherAllowedClasses(req.user.linked_teacher_id);
       if (cls) {
-        if (!allowedClasses.includes(cls)) {
+        const matches = allowedClasses.some(ac => isClassMatch(ac, cls));
+        if (!matches) {
           return res.status(403).json({ message: 'Access denied. You are not assigned to this class.' });
         }
-      } else {
+      } else if (allowedClasses.length > 0) {
         where.class = { [Op.in]: allowedClasses };
       }
     }

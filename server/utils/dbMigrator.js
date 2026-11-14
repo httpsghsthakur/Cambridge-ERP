@@ -360,6 +360,75 @@ async function migrateStudentMarksheetColumns() {
   }
 }
 
+async function migrateActiveSession() {
+  try {
+    const { Session, Student } = require('../models');
+    const { Op } = require('sequelize');
+
+    // Find or create session 2026-2027
+    let [session2026, created] = await Session.findOrCreate({
+      where: { name: '2026-2027' },
+      defaults: {
+        name: '2026-2027',
+        start_date: '2026-04-01',
+        end_date: '2027-03-31',
+        is_active: true,
+        is_archived: false,
+        promotion_completed: false,
+      }
+    });
+
+    // Ensure session 2026-2027 is active and not archived
+    await session2026.update({ is_active: true, is_archived: false });
+
+    // Deactivate all other sessions so only 2026-2027 is active
+    await Session.update(
+      { is_active: false },
+      { where: { id: { [Op.ne]: session2026.id } } }
+    );
+
+    // Archive sessions strictly older than 2026-2027
+    await Session.update(
+      { is_archived: true },
+      {
+        where: {
+          id: { [Op.ne]: session2026.id },
+          start_date: { [Op.lt]: '2026-04-01' }
+        }
+      }
+    );
+
+    // Ensure active students are associated with session 2026-2027 if unlinked or pointing to old inactive sessions
+    const activeStudents = await Student.findAll({
+      attributes: ['id', 'session_id'],
+      where: {
+        is_active: true,
+        approval_status: 'approved',
+        [Op.or]: [
+          { session_id: null },
+          { session_id: { [Op.ne]: session2026.id } }
+        ]
+      }
+    });
+
+    if (activeStudents.length > 0) {
+      await Student.update(
+        { session_id: session2026.id },
+        {
+          where: {
+            id: { [Op.in]: activeStudents.map(s => s.id) }
+          }
+        }
+      );
+      console.log(`[MIGRATOR] Associated ${activeStudents.length} active students to session 2026-2027`);
+    }
+
+    console.log('[MIGRATOR] ✅ Active academic session 2026-2027 verified and activated.');
+  } catch (err) {
+    console.error('[MIGRATOR] ❌ Active session migration failed:', err.message);
+  }
+}
+
 module.exports = {
   migratePendingStudents,
   migrateFeeColumns,
@@ -367,4 +436,5 @@ module.exports = {
   migrateDatesheetAndAchievementTables,
   migrateSessionAttendanceAndPromotionColumns,
   migrateStudentMarksheetColumns,
+  migrateActiveSession,
 };

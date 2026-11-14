@@ -150,7 +150,7 @@ app.get('/api/fix-db', protect, isSuperAdmin, async (req, res) => {
     let msg = 'Database sync successful. ';
     const count = await Session.count();
     if (count === 0) {
-      await Session.create({ name: '2024-2025', start_date: '2024-04-01', end_date: '2025-03-31', is_active: true });
+      await Session.create({ name: '2026-2027', start_date: '2026-04-01', end_date: '2027-03-31', is_active: true });
       msg += 'Created default session.';
     } else {
       msg += 'Session already exists.';
@@ -202,10 +202,9 @@ app.get('/api/seed-demo-data', async (req, res) => {
     const bcrypt = require('bcryptjs');
     const { sequelize, User, Student, Teacher, Session, Fee, Notification, ClassFeeStructure } = require('./models');
 
-    // Make sure we have a session
-    let session = await Session.findOne({ where: { is_active: true } });
+    let session = await Session.findOne({ where: { is_active: true }, order: [['start_date', 'DESC'], ['id', 'DESC']] });
     if (!session) {
-      session = await Session.create({ name: '2024-2025', start_date: '2024-06-01', end_date: '2025-05-31', is_active: true });
+      session = await Session.create({ name: '2026-2027', start_date: '2026-04-01', end_date: '2027-03-31', is_active: true });
     }
 
     // Add demo teachers
@@ -406,6 +405,7 @@ app.listen(port, host, () => {
           migrateDatesheetAndAchievementTables,
           migrateSessionAttendanceAndPromotionColumns,
           migrateStudentMarksheetColumns,
+          migrateActiveSession,
         } = require('./utils/dbMigrator');
         await migratePendingStudents();
         await migrateFeeColumns();
@@ -413,18 +413,19 @@ app.listen(port, host, () => {
         await migrateDatesheetAndAchievementTables();
         await migrateSessionAttendanceAndPromotionColumns();
         await migrateStudentMarksheetColumns();
+        await migrateActiveSession();
 
         // Auto-create default session if none exists (Hotfix for Hostinger setup)
         const { Session, User } = require('./models');
         const sessionCount = await Session.count();
         if (sessionCount === 0) {
           await Session.create({
-            name: '2024-2025',
-            start_date: '2024-04-01',
-            end_date: '2025-03-31',
+            name: '2026-2027',
+            start_date: '2026-04-01',
+            end_date: '2027-03-31',
             is_active: true
           });
-          console.log('[DB] ✅ Default session 2024-2025 auto-created');
+          console.log('[DB] ✅ Default session 2026-2027 auto-created');
         }
 
         const { rejectOldPendingStudents, calculateOverdueFees } = require('./utils/cleanupTasks');

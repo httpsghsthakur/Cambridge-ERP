@@ -82,7 +82,15 @@ router.get('/', protect, isAdmin, async (req, res) => {
 
 router.get('/active', protect, async (req, res) => {
   try {
-    const session = await Session.findOne({ where: { is_active: true } });
+    let session = await Session.findOne({
+      where: { is_active: true },
+      order: [['start_date', 'DESC'], ['id', 'DESC']]
+    });
+    if (!session) {
+      session = await Session.findOne({
+        order: [['start_date', 'DESC'], ['id', 'DESC']]
+      });
+    }
     res.json(session);
   } catch (err) { res.status(500).json({ message: err.message }); }
 });

@@ -11,22 +11,45 @@ const {
   Notification,
   Attendance,
   Session,
+  ClassSubject,
 } = require('../models');
 const { protect, authorize, hasPermission } = require('../middleware/auth');
 const { validateResultCreate, validateResultInchargeReview } = require('../middleware/validator');
 const { cacheMiddleware } = require('../utils/cache');
-const { getTeacherAllowedClasses } = require('../utils/teacherAllowedClasses');
+const { getTeacherAllowedClasses, isClassMatch } = require('../utils/teacherAllowedClasses');
 
 const calcGrade = (pct) =>
   pct >= 90 ? 'A+' : pct >= 80 ? 'A' : pct >= 70 ? 'B' : pct >= 60 ? 'C' : pct >= 40 ? 'D' : 'F';
 
 const teacherCanEnter = async (teacherRecord, cls, section, subject) => {
-  if (!teacherRecord) return false;
-  const assigned = teacherRecord.assigned_classes?.split(',').map((s) => s.trim()) || [];
-  if (!assigned.includes(cls)) return false;
+  if (!teacherRecord) return true; // If not linked, allow mark entry fallback
+  const assigned = teacherRecord.assigned_classes?.split(',').map((s) => s.trim()).filter(Boolean) || [];
+
+  if (assigned.length > 0 && !assigned.some(c => c.toLowerCase() === 'all' || c === '*')) {
+    const classMatches = assigned.some(c => isClassMatch(c, cls));
+    if (!classMatches) {
+      const cs = await ClassSubject.findOne({
+        where: { teacher_id: teacherRecord.id, class: cls }
+      });
+      if (!cs) {
+        const incharge = await ClassIncharge.findOne({
+          where: { teacher_id: teacherRecord.id, class: cls, is_active: true }
+        });
+        if (!incharge) return false;
+      }
+    }
+  }
+
   if (subject && teacherRecord.subject) {
-    const subjects = teacherRecord.subject.split(',').map(s => s.trim().toLowerCase());
-    if (!subjects.includes(subject.trim().toLowerCase())) return false;
+    const subjects = teacherRecord.subject.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    const subClean = subject.trim().toLowerCase();
+    const hasSubMatch = subjects.some(s => s === subClean || s === 'all' || s === 'general');
+    if (!hasSubMatch) {
+      const cs = await ClassSubject.findOne({
+        where: { teacher_id: teacherRecord.id, subject }
+      });
+      if (!cs) return false;
+    }
   }
   return true;
 };
@@ -89,7 +112,8 @@ router.get('/student/:studentId', protect, async (req, res) => {
         return res.status(404).json({ message: 'Student not found.' });
       }
       const allowedClasses = await getTeacherAllowedClasses(req.user.linked_teacher_id);
-      if (!allowedClasses.includes(student.class)) {
+      const matches = allowedClasses.some(ac => isClassMatch(ac, student.class));
+      if (!matches) {
         return res.status(403).json({ message: 'Access denied. Student is not in your assigned classes.' });
       }
     }
@@ -282,17 +306,27 @@ router.post('/', protect, authorize('admin', 'admin2', 'teacher'), validateResul
     } = req.body;
 
     if (req.user.role === 'teacher') {
-      const isIncharge = await ClassIncharge.findOne({
+      let teacherId = req.user.linked_teacher_id;
+      let teacherRecord = teacherId ? await Teacher.findByPk(teacherId) : null;
+      if (!teacherRecord && (req.user.email || req.user.name)) {
+        if (req.user.email) teacherRecord = await Teacher.findOne({ where: { email: req.user.email } });
+        if (!teacherRecord && req.user.name) teacherRecord = await Teacher.findOne({ where: { name: req.user.name } });
+        if (teacherRecord) {
+          teacherId = teacherRecord.id;
+          try { await req.user.update({ linked_teacher_id: teacherId }); } catch (e) {}
+        }
+      }
+
+      const isIncharge = teacherId ? await ClassIncharge.findOne({
         where: {
-          teacher_id: req.user.linked_teacher_id,
+          teacher_id: teacherId,
           class: cls,
           section: section,
           is_active: true
         }
-      });
+      }) : null;
 
       if (!isIncharge) {
-        const teacherRecord = await Teacher.findByPk(req.user.linked_teacher_id);
         const subject = subjects?.[0]?.subject;
         const allowed = await teacherCanEnter(teacherRecord, cls, section, subject);
         if (!allowed) {
@@ -311,6 +345,12 @@ router.post('/', protect, authorize('admin', 'admin2', 'teacher'), validateResul
       grade: calcGrade((s.obtained_marks / s.max_marks) * 100),
     }));
 
+    let effSessionId = session_id;
+    if (!effSessionId) {
+      const activeSession = await Session.findOne({ where: { is_active: true }, order: [['id', 'DESC']] });
+      effSessionId = activeSession?.id || null;
+    }
+
     const result = await Result.create(
       {
         student_id,
@@ -318,7 +358,7 @@ router.post('/', protect, authorize('admin', 'admin2', 'teacher'), validateResul
         exam_type,
         class: cls,
         section,
-        session_id,
+        session_id: effSessionId,
         total_marks,
         total_obtained,
         percentage,
