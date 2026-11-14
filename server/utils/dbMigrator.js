@@ -405,6 +405,8 @@ async function migrateStudentMarksheetColumns() {
       { name: 'aadhar_number', type: DataTypes.STRING(20) },
       { name: 'pen_number', type: DataTypes.STRING(30) },
       { name: 'family_id', type: DataTypes.STRING(30) },
+      { name: 'profile_photo', type: DataTypes.TEXT },
+      { name: 'admission_date', type: DataTypes.DATEONLY },
     ];
 
     for (const col of columnsToAdd) {
