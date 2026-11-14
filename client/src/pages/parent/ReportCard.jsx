@@ -45,15 +45,48 @@ export default function ReportCard() {
 
   return (
     <div className="space-y-4 max-w-2xl">
-      {/* Exam selector */}
-      {results.length > 1 && (
-        <select
-          value={selected?.id}
-          onChange={e => setSelected(results.find(r => r.id === parseInt(e.target.value)))}
-          className="w-full sm:w-auto border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-500 bg-white"
-        >
-          {results.map(r => <option key={r.id} value={r.id}>{r.exam_name}</option>)}
-        </select>
+      {/* Exam selector bar */}
+      {results.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
+              Select Examination to Generate Marksheet
+            </label>
+            <select
+              value={selected?.id || ''}
+              onChange={e => {
+                const found = results.find(r => r.id === parseInt(e.target.value, 10));
+                if (found) setSelected(found);
+              }}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none focus:border-blue-500 bg-slate-50"
+            >
+              {results.map(r => (
+                <option key={r.id} value={r.id}>
+                  {r.exam_name} — {r.total_obtained}/{r.total_marks} ({r.percentage}%) · Grade {r.grade}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            onClick={handleDownload}
+            disabled={downloading || !selected}
+            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm flex-shrink-0"
+          >
+            {downloading ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Generating PDF...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Download Marksheet PDF
+              </>
+            )}
+          </button>
+        </div>
       )}
 
       {!selected ? (

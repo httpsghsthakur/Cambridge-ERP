@@ -176,12 +176,15 @@ export default function StudentPerformance() {
 
   const handleDownloadSingleExam = async (exam) => {
     if (!detailData || !exam) return;
+    setPdfGenerating(true);
     try {
       await generateReportCard(detailData.student, exam, settings, detailData.attendance);
-      toast.success(`Marksheet for ${exam.exam_name} downloaded!`);
+      toast.success(`Official Marksheet for ${exam.exam_name} downloaded!`);
     } catch (err) {
       console.error(err);
       toast.error('Failed to generate exam marksheet.');
+    } finally {
+      setPdfGenerating(false);
     }
   };
 
@@ -867,26 +870,57 @@ export default function StudentPerformance() {
               {/* TAB 1: OVERVIEW */}
               {activeTab === 'overview' && (
                 <div className="space-y-4">
-                  {/* Quick Export Alert Banner */}
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <h4 className="text-sm font-bold text-blue-900">Official Student Dossier Ready</h4>
-                      <p className="text-xs text-blue-700 mt-0.5">
-                        Download a consolidated transcript covering all exams and tests or the complete performance evaluation report.
-                      </p>
+                  {/* Select Exam to Generate Marksheet Bar */}
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-xs font-bold text-blue-950 uppercase tracking-wider mb-1">
+                        Select Exam to Generate Marksheet
+                      </h4>
+                      {detailData.academics.exams.length > 0 ? (
+                        <select
+                          value={selectedExamId || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setSelectedExamId(val ? parseInt(val, 10) : null);
+                          }}
+                          className="w-full bg-white border border-blue-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold text-gray-800 outline-none focus:border-blue-500 shadow-xs"
+                        >
+                          <option value="">★ Consolidated Marksheet (All Exams - 1 Page)</option>
+                          {detailData.academics.exams.map((ex) => (
+                            <option key={ex.id} value={ex.id}>
+                              {ex.exam_name} — {ex.total_obtained}/{ex.total_marks} ({ex.percentage}%) · Grade {ex.grade}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <p className="text-xs text-blue-700">No examination records entered yet.</p>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <button
-                        onClick={handleDownloadAllMarksheets}
-                        className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition whitespace-nowrap shadow-sm"
+                        onClick={() => {
+                          if (selectedExamId) {
+                            const chosen = detailData.academics.exams.find(e => e.id === selectedExamId);
+                            if (chosen) handleDownloadSingleExam(chosen);
+                          } else {
+                            handleDownloadAllMarksheets();
+                          }
+                        }}
+                        disabled={pdfGenerating || detailData.academics.exams.length === 0}
+                        className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-bold transition shadow-sm disabled:opacity-50"
                       >
-                        📄 Download Marksheet (All Exams)
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        {pdfGenerating ? 'Generating...' : 'Download Marksheet PDF'}
                       </button>
                       <button
                         onClick={handleDownloadFullReport}
-                        className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition whitespace-nowrap shadow-sm"
+                        disabled={pdfGenerating}
+                        className="px-3.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-semibold transition whitespace-nowrap shadow-sm disabled:opacity-50"
+                        title="Download Dossier"
                       >
-                        📊 Download Report PDF
+                        📊 Full Report
                       </button>
                     </div>
                   </div>
@@ -1024,15 +1058,20 @@ export default function StudentPerformance() {
                           <span className="text-xs font-bold text-gray-700">All Exams Recorded: {detailData.academics.exams.length}</span>
                           <span className="text-xs text-gray-400">· Average: {detailData.academics.average_percentage}%</span>
                         </div>
-                        <button
-                          onClick={handleDownloadAllMarksheets}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition shadow-sm self-start sm:self-auto"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                          Download Marksheet (All Exams Till Now)
-                        </button>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <button
+                            onClick={() => {
+                              if (activeExam) handleDownloadSingleExam(activeExam);
+                              else handleDownloadAllMarksheets();
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition shadow-sm"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Download Marksheet ({activeExam?.exam_name || 'Selected Exam'})
+                          </button>
+                        </div>
                       </div>
 
                       {/* Exam Selector Pills */}
@@ -1082,12 +1121,13 @@ export default function StudentPerformance() {
                               {/* Download single exam report */}
                               <button
                                 onClick={() => handleDownloadSingleExam(activeExam)}
-                                className="p-2 rounded-xl bg-white border border-gray-200 hover:bg-blue-50 hover:border-blue-300 text-blue-600 transition shadow-sm"
-                                title="Download Report Card for this Exam"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 text-xs font-bold transition shadow-xs"
+                                title="Download Marksheet for this Exam"
                               >
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
+                                <span>Marksheet PDF</span>
                               </button>
                             </div>
                           </div>

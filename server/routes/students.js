@@ -474,7 +474,8 @@ router.get('/:id/performance', protect, hasPermission('VIEW_STUDENTS'), async (r
     // Authorization check for teacher: MUST be in teacher's allowed classes
     if (req.user.role === 'teacher') {
       const allowedClasses = await getTeacherAllowedClasses(req.user.linked_teacher_id);
-      if (!allowedClasses.includes(student.class)) {
+      const matches = allowedClasses.some(ac => isClassMatch(ac, student.class));
+      if (!matches) {
         return res.status(403).json({ message: 'Access denied. This student is not under your assigned classes.' });
       }
     }
@@ -595,8 +596,16 @@ router.get('/:id/performance', protect, hasPermission('VIEW_STUDENTS'), async (r
       latest_fee: fees[0] || null
     };
 
+    const stuJson = student.toJSON();
+    if (!stuJson.profile_photo) {
+      try {
+        const stuUser = await User.findOne({ where: { linked_student_id: studentId }, attributes: ['profile_photo'] });
+        if (stuUser?.profile_photo) stuJson.profile_photo = stuUser.profile_photo;
+      } catch (e) {}
+    }
+
     res.json({
-      student: student.toJSON(),
+      student: stuJson,
       attendance: {
         total_working_days: totalWorkingDays,
         present_days: presentDays,

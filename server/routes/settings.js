@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const { Setting } = require('../models');
+const { Setting, User } = require('../models');
 const { protect, authorize } = require('../middleware/auth');
 const { getOrCreateConfig } = require('../services/central/configService');
 const { synchronizeOperationalData } = require('../services/central/syncEngine');
@@ -34,6 +34,16 @@ router.get('/', async (req, res) => {
       console.warn('[GET /settings] Could not load central config:', e.message);
     }
     
+    let adminPhoto = null;
+    try {
+      const adminUser = await User.findOne({
+        where: { role: 'admin', is_active: true },
+        attributes: ['profile_photo'],
+        order: [['id', 'ASC']],
+      });
+      if (adminUser?.profile_photo) adminPhoto = adminUser.profile_photo;
+    } catch (e) {}
+
     // Provide defaults if not set
     const defaultSettings = {
       school_name: 'International Cambridge School Kishtwar',
@@ -43,6 +53,8 @@ router.get('/', async (req, res) => {
       school_email: 'info@cambridgeschoolkishtwar.com',
       receipt_footer: 'This is a computer-generated receipt. No signature required.',
       school_id: settingsObj.school_id || centralSchoolId,
+      school_logo_url: settingsObj.school_logo_url || adminPhoto || null,
+      admin_profile_photo: adminPhoto,
       central_connection_status: centralStatus,
       central_erp_url: settingsObj.central_erp_url || centralUrl,
       central_api_key: settingsObj.central_api_key || centralApiKey,

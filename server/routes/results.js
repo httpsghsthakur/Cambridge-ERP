@@ -148,10 +148,22 @@ router.get('/student/:studentId', protect, async (req, res) => {
       percentage: attPct,
     };
 
+    let studentUserPhoto = null;
+    try {
+      const stuUser = await User.findOne({
+        where: { linked_student_id: studentId },
+        attributes: ['profile_photo'],
+      });
+      if (stuUser?.profile_photo) studentUserPhoto = stuUser.profile_photo;
+    } catch (e) {}
+
     res.set('Cache-Control', 'no-store');
     res.json(results.map((r) => {
       const json = r.toJSON();
       json.attendance = attendanceSummary;
+      if (json.student && !json.student.profile_photo && studentUserPhoto) {
+        json.student.profile_photo = studentUserPhoto;
+      }
       return json;
     }));
   } catch (err) {

@@ -65,9 +65,11 @@ export const loadLogoBase64 = async (logoUrl) => {
   }
   try {
     return await new Promise((resolve) => {
+      const timer = setTimeout(() => resolve(null), 3500);
       const img = new Image();
       img.crossOrigin = 'Anonymous';
       img.onload = () => {
+        clearTimeout(timer);
         try {
           const canvas = document.createElement('canvas');
           canvas.width = img.width || 300;
@@ -79,10 +81,18 @@ export const loadLogoBase64 = async (logoUrl) => {
           resolve(null);
         }
       };
-      img.onerror = () => resolve(null);
-      const fullUrl = logoUrl.startsWith('/') && window.location
-        ? `${window.location.origin}${logoUrl}`
-        : logoUrl;
+      img.onerror = () => {
+        clearTimeout(timer);
+        resolve(null);
+      };
+      let fullUrl = String(logoUrl);
+      if (typeof window !== 'undefined' && window.location) {
+        if (fullUrl.startsWith('/')) {
+          fullUrl = `${window.location.origin}${fullUrl}`;
+        } else if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://')) {
+          fullUrl = `${window.location.origin}/${fullUrl}`;
+        }
+      }
       img.src = fullUrl;
     });
   } catch (e) {
@@ -373,31 +383,32 @@ export const renderCertificateMarksheetPage = async (doc, {
   doc.setFont('helvetica', 'bold');
   doc.text(schoolSub, centerX, 39.5, { align: 'center' });
 
-  // 8. Document Title & Session (Tailored to exam type)
+  // 8. Document Title & Session (Tailored strictly to teacher's entered exam name)
+  const teacherExamName = String(result?.exam_name || '').trim();
   const exType = String(result?.exam_type || '').toLowerCase();
-  const exName = String(result?.exam_name || '').trim().toUpperCase();
+  const exName = teacherExamName.toUpperCase();
 
   const isUnitTest = exType === 'unit_test' || exName.includes('UNIT') || exName.includes('PERIODIC') || exName.includes('PT-') || exName.includes('UT-');
   const isClassTest = exType === 'class_test' || exType === 'assessment' || exName.includes('CLASS TEST') || exName.includes('WEEKLY') || exName.includes('MONTHLY');
   const isHalfYearly = exType === 'half_yearly' || exType === 'pre_board' || exName.includes('HALF') || exName.includes('MID') || exName.includes('TERM 1') || exName.includes('TERM 2');
-  const isAnnual = isConsolidated || (!isUnitTest && !isClassTest && !isHalfYearly);
+  const isAnnual = isConsolidated || (!isUnitTest && !isClassTest && !isHalfYearly && !exName);
 
+  // The Exam name in the marksheet must be the Exam name set by the teacher
   let titleText = 'ANNUAL CONSOLIDATED MARKSHEET CUM CERTIFICATE';
-  if (settings?.marksheet_title) {
+  if (teacherExamName) {
+    titleText = teacherExamName.toUpperCase();
+  } else if (settings?.marksheet_title) {
     titleText = settings.marksheet_title.toUpperCase();
-  } else if (isUnitTest) {
-    titleText = exName ? `${exName} REPORT CARD` : 'PERIODIC UNIT TEST REPORT CARD';
-  } else if (isClassTest) {
-    titleText = exName ? `${exName} REPORT` : 'CLASS TEST & CONTINUOUS ASSESSMENT REPORT';
-  } else if (isHalfYearly) {
-    titleText = exName ? `${exName} PERFORMANCE REPORT` : 'HALF YEARLY EXAMINATION PERFORMANCE REPORT';
-  } else if (exName) {
-    titleText = `${exName} MARKSHEET CUM CERTIFICATE`;
   }
 
   doc.setTextColor(15, 23, 42);
-  doc.setFontSize(11.5);
+  let titleFontSize = 12.0;
   doc.setFont('helvetica', 'bold');
+  doc.setFontSize(titleFontSize);
+  while (doc.getTextWidth(titleText) > 170 && titleFontSize > 8) {
+    titleFontSize -= 0.5;
+    doc.setFontSize(titleFontSize);
+  }
   doc.text(titleText, centerX, 46.5, { align: 'center' });
 
   const sessionName = stu?.session?.name || result?.session_name || result?.session?.name || settings?.academic_session || '—';
@@ -540,7 +551,9 @@ export const renderCertificateMarksheetPage = async (doc, {
   // ═══════════════════════════════════════════════════════════════════════════
   if (isUnitTest || isClassTest) {
     const tableW = 188;
-    const headerTitle = isUnitTest ? 'PERIODIC UNIT TEST EVALUATION' : 'CLASS TEST & CONTINUOUS ASSESSMENT';
+    const headerTitle = teacherExamName
+      ? `${teacherExamName.toUpperCase()} — EVALUATION RECORD`
+      : (isUnitTest ? 'PERIODIC UNIT TEST EVALUATION' : 'CLASS TEST & CONTINUOUS ASSESSMENT');
 
     doc.setFillColor(248, 250, 252);
     doc.rect(11, tableY, tableW, 5.2, 'F');
@@ -761,7 +774,10 @@ export const renderCertificateMarksheetPage = async (doc, {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(0, 0, 0);
-    doc.text(isHalfYearly ? 'ACADEMIC SUBJECTS' : 'MAIN SUBJECT', 11 + leftTableW / 2, tableY + 3.7, { align: 'center' });
+    const leftHeaderTitle = teacherExamName
+      ? teacherExamName.toUpperCase()
+      : (isHalfYearly ? 'ACADEMIC SUBJECTS' : 'MAIN SUBJECT');
+    doc.text(leftHeaderTitle, 11 + leftTableW / 2, tableY + 3.7, { align: 'center' });
 
     const maxMarksHeader = isHalfYearly ? 'MAX.\nMARKS' : 'MAX. MARKS\n(CCE+TE)';
     const subCols = [
@@ -1020,7 +1036,8 @@ export const renderCertificateMarksheetPage = async (doc, {
 // ── Report Card PDF (Official Marksheet Cum Certificate) ───────────────────────
 export const generateReportCard = async (student, result, settings = {}, attendance = null) => {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const logoBase64 = await loadLogoBase64(settings?.school_logo_url);
+  const logoUrl = settings?.school_logo_url || settings?.admin_profile_photo || settings?.logo_url || settings?.school_logo;
+  const logoBase64 = await loadLogoBase64(logoUrl);
   const stuPhotoUrl = student?.profile_photo || 
                       student?.photo_url || 
                       student?.photo || 
@@ -1041,6 +1058,11 @@ export const generateReportCard = async (student, result, settings = {}, attenda
     logoBase64,
     studentPhotoBase64,
   });
+
+  // Strict Single-Page Guarantee: strictly prevent extra blank or spilled-over pages
+  while (doc.internal.getNumberOfPages() > 1) {
+    doc.deletePage(doc.internal.getNumberOfPages());
+  }
 
   const stuId = realStudent?.student_id || student?.student_id || student?.roll_number || 'student';
   const exName = (result?.exam_name || result?.exam_type || 'marksheet').replace(/\s+/g, '_');
@@ -1410,19 +1432,17 @@ export const generateTimetablePDF = async ({
 // ── Consolidated Marksheet (All Exams Till Now) PDF ──────────────────────────
 export const generateConsolidatedMarksheet = async (student, detailData, settings = {}) => {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const pageWidth = doc.internal.pageSize.width;
-  const pageHeight = doc.internal.pageSize.height;
 
   const stu = detailData?.student || student || {};
   const academics = detailData?.academics || {};
-  const exams = academics.exams || [];
   const attendance = detailData?.attendance || {};
 
-  const logoBase64 = await loadLogoBase64(settings?.school_logo_url);
+  const logoUrl = settings?.school_logo_url || settings?.admin_profile_photo || settings?.logo_url || settings?.school_logo;
+  const logoBase64 = await loadLogoBase64(logoUrl);
   const stuPhotoUrl = stu?.profile_photo || stu?.photo_url || stu?.photo || stu?.avatar;
   const studentPhotoBase64 = await loadPhotoBase64(stuPhotoUrl);
 
-  // Page 1: Official Master Cumulative Marksheet Cum Certificate
+  // Single Page: Official Master Cumulative Marksheet Cum Certificate
   await renderCertificateMarksheetPage(doc, {
     student: stu,
     academics,
@@ -1433,110 +1453,9 @@ export const generateConsolidatedMarksheet = async (student, detailData, setting
     studentPhotoBase64,
   });
 
-  // Subsequent Pages: If multiple exams exist, render detailed term-by-term tables
-  if (exams.length > 0) {
-    doc.addPage();
-
-    // Matching Royal Blue and Gold Outer Frame
-    doc.setDrawColor(26, 54, 138);
-    doc.setLineWidth(1.2);
-    doc.rect(6, 6, 198, 285, 'S');
-    doc.setDrawColor(245, 175, 20);
-    doc.setLineWidth(0.8);
-    doc.rect(7.6, 7.6, 194.8, 281.8, 'S');
-
-    // Header strip
-    doc.setFillColor(15, 23, 42);
-    doc.rect(8, 8, 194, 16, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.text('EXAMINATION-WISE TERM RECORD & PERFORMANCE BREAKDOWN', 105, 18, { align: 'center' });
-
-    let currentY = 28;
-
-    exams.forEach((exam, index) => {
-      if (currentY > pageHeight - 55) {
-        doc.addPage();
-        doc.setDrawColor(26, 54, 138);
-        doc.setLineWidth(1.2);
-        doc.rect(6, 6, 198, 285, 'S');
-        doc.setDrawColor(245, 175, 20);
-        doc.setLineWidth(0.8);
-        doc.rect(7.6, 7.6, 194.8, 281.8, 'S');
-        currentY = 16;
-      }
-
-      doc.setFillColor(241, 245, 249);
-      doc.roundedRect(12, currentY, pageWidth - 24, 7, 1, 1, 'F');
-      doc.setFontSize(8.5);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(15, 23, 42);
-      doc.text(
-        `EXAM ${index + 1}: ${(exam.exam_name || 'EXAMINATION').toUpperCase()} (${(exam.exam_type || 'EXAM').replace('_', ' ').toUpperCase()}) — Date: ${formatDate(exam.created_at)}`,
-        15,
-        currentY + 5
-      );
-
-      const tableBody = (exam.subjects || []).map((sub) => {
-        const sPct = sub.max_marks > 0 ? Math.round((sub.obtained_marks / sub.max_marks) * 100) : 0;
-        return [
-          sub.subject,
-          sub.max_marks || '—',
-          sub.obtained_marks != null ? sub.obtained_marks : '—',
-          `${sPct}%`,
-          sub.grade || getGrade(sub.obtained_marks, sub.max_marks),
-          sPct >= 33 ? 'PASS' : 'FAIL',
-        ];
-      });
-
-      autoTable(doc, {
-        startY: currentY + 8,
-        margin: { left: 12, right: 12 },
-        head: [['Subject', 'Max Marks', 'Marks Obtained', 'Percentage', 'Grade', 'Result']],
-        body: tableBody,
-        foot: [[
-          'Exam Total / Standing',
-          exam.total_marks || '—',
-          exam.total_obtained || '—',
-          `${exam.percentage || 0}%`,
-          exam.grade || '—',
-          (exam.percentage || 0) >= 33 ? 'PASSED' : 'FAILED',
-        ]],
-        headStyles: {
-          fillColor: [26, 54, 138],
-          textColor: 255,
-          fontSize: 8,
-          fontStyle: 'bold',
-          halign: 'center',
-          cellPadding: 2,
-        },
-        bodyStyles: {
-          fontSize: 7.5,
-          textColor: [30, 41, 59],
-          cellPadding: 2,
-        },
-        footStyles: {
-          fillColor: [241, 245, 249],
-          textColor: [15, 23, 42],
-          fontStyle: 'bold',
-          fontSize: 8,
-          halign: 'center',
-          cellPadding: 2,
-        },
-        alternateRowStyles: { fillColor: [248, 250, 252] },
-        columnStyles: {
-          0: { halign: 'left', fontStyle: 'bold', cellWidth: 55 },
-          1: { halign: 'center', cellWidth: 25 },
-          2: { halign: 'center', fontStyle: 'bold', cellWidth: 30 },
-          3: { halign: 'center', cellWidth: 25 },
-          4: { halign: 'center', fontStyle: 'bold', cellWidth: 25 },
-          5: { halign: 'center', fontStyle: 'bold', cellWidth: 26 },
-        },
-      });
-
-      currentY = doc.lastAutoTable.finalY + 8;
-    });
+  // Strict Single-Page Guarantee: Do not add extra pages
+  while (doc.internal.getNumberOfPages() > 1) {
+    doc.deletePage(doc.internal.getNumberOfPages());
   }
 
   const stuId = stu.student_id || 'student';

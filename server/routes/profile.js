@@ -127,6 +127,20 @@ router.post('/avatar', protect, (req, res) => {
       user.profile_photo = photoUrl;
       await user.save();
 
+      // If this is admin, sync to school_logo_url setting for marksheet logo
+      if (user.role === 'admin' || user.role === 'admin2') {
+        const { Setting } = require('../models');
+        await Setting.upsert({ key: 'school_logo_url', value: photoUrl });
+      }
+
+      // If student/parent or linked to a student, sync to student's profile_photo
+      if (user.linked_student_id) {
+        await Student.update(
+          { profile_photo: photoUrl },
+          { where: { id: user.linked_student_id } }
+        );
+      }
+
       res.json({
         message: 'Profile photo updated successfully.',
         profile_photo: photoUrl,

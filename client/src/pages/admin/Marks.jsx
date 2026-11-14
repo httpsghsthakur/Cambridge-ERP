@@ -90,6 +90,10 @@ export default function Marks() {
   const [saving, setSaving]     = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [classSubjects, setClassSubjects] = useState([]);
+  const [selectedExamFilter, setSelectedExamFilter] = useState('');
+
+  const uniqueExams = [...new Set(results.map(r => r.exam_name).filter(Boolean))];
+  const filteredResults = selectedExamFilter ? results.filter(r => r.exam_name === selectedExamFilter) : results;
 
   useEffect(() => {
     API.get(`/students?class=${cls}&section=${section}`)
@@ -171,6 +175,18 @@ export default function Marks() {
         <select value={section} onChange={e => setSection(e.target.value)} className={f}>
           {SECTIONS.map(s => <option key={s}>{s}</option>)}
         </select>
+        {uniqueExams.length > 0 && (
+          <select 
+            value={selectedExamFilter} 
+            onChange={e => setSelectedExamFilter(e.target.value)} 
+            className={f}
+          >
+            <option value="">All Exams ({results.length})</option>
+            {uniqueExams.map(ex => (
+              <option key={ex} value={ex}>{ex}</option>
+            ))}
+          </select>
+        )}
         <div className="ml-auto flex gap-2">
           <button onClick={handleBulkPublish} disabled={publishing || selectedResults.length === 0}
             className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${selectedResults.length > 0 ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}>
@@ -206,9 +222,9 @@ export default function Marks() {
               </tr>
             </thead>
             <tbody>
-              {results.length === 0 ? (
-                <tr><td colSpan={10} className="text-center text-gray-400 py-10">No results entered yet.</td></tr>
-              ) : results.map(r => (
+              {filteredResults.length === 0 ? (
+                <tr><td colSpan={10} className="text-center text-gray-400 py-10">No results found for selected criteria.</td></tr>
+              ) : filteredResults.map(r => (
                 <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="py-3 px-4">
                     <input type="checkbox" 

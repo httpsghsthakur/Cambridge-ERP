@@ -140,7 +140,44 @@ async function runMarksheetAuthenticityTests() {
     assert.strictEqual(emptyStudent.roll_number, null);
     console.log('  [TEST] 4. Null student fields do not emit fake hardcoded fallbacks ... ✅ PASS\n');
 
+    // 5. Verify teacher exam name and student profile photo fidelity
+    console.log('  [TEST] 5. Verify teacher exam name fidelity and student profile photo ...');
+    const teacherExamName = 'Unit Test 1 — November 2026';
+    const testStudentWithPhoto = await Student.create({
+      student_id: 'SCH-PHOTO-' + Date.now().toString().slice(-4),
+      first_name: 'Priya',
+      last_name: 'Verma',
+      class: 'Class 8',
+      section: 'A',
+      profile_photo: '/uploads/avatars/student-photo-test.jpg',
+      approval_status: 'approved',
+    });
+
+    const teacherResult = await Result.create({
+      student_id: testStudentWithPhoto.id,
+      exam_name: teacherExamName,
+      exam_type: 'unit_test',
+      class: 'Class 8',
+      section: 'A',
+      session_id: session.id,
+      total_marks: 100,
+      total_obtained: 88,
+      percentage: 88.0,
+      grade: 'A',
+      workflow_status: 'published',
+      is_published: true,
+    });
+
+    const fetchedExam = await Result.findByPk(teacherResult.id, {
+      include: [{ model: Student, as: 'student' }],
+    });
+    assert.strictEqual(fetchedExam.exam_name, teacherExamName, 'Teacher exam name must match exactly');
+    assert.strictEqual(fetchedExam.student.profile_photo, '/uploads/avatars/student-photo-test.jpg', 'Student profile photo must match');
+    console.log('  [TEST] 5. Verify teacher exam name fidelity and student profile photo ... ✅ PASS\n');
+
     // Clean up test records
+    await Result.destroy({ where: { id: teacherResult.id } });
+    await Student.destroy({ where: { id: testStudentWithPhoto.id } });
     await ResultSubject.destroy({ where: { result_id: exam.id } });
     await Result.destroy({ where: { id: exam.id } });
     await Attendance.destroy({ where: { student_id: createdStudent.id } });
