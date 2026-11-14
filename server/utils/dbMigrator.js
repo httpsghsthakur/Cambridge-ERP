@@ -1,56 +1,118 @@
-const { Student, AdmissionRequest, User, sequelize } = require('../models');
+const { Student, AdmissionRequest, User, Session, sequelize } = require('../models');
+const { makeStudentId, makeStudentEmail, makeTemporaryPassword } = require('./credentialGenerator');
+const { getOrCreateFeeRecord, MONTHS } = require('../services/feeService');
 
 async function migratePendingStudents() {
   const txn = await sequelize.transaction();
   try {
-    // 1. Migrate students with approval_status: 'pending' (unapproved legacy students)
+    // 1. Auto-approve and activate any pending students in the database
     const pendingStudents = await Student.findAll({
       where: { approval_status: 'pending' },
       transaction: txn,
     });
 
     if (pendingStudents.length > 0) {
-      console.log(`[MIGRATOR] Found ${pendingStudents.length} pending students to migrate to admission requests.`);
+      console.log(`[MIGRATOR] Found ${pendingStudents.length} pending students. Approving and activating...`);
       for (const student of pendingStudents) {
-        const existingRequest = await AdmissionRequest.findOne({
+        await student.update({
+          approval_status: 'approved',
+          is_active: true,
+          student_status: 'active',
+          approved_at: student.approved_at || new Date(),
+        }, { transaction: txn });
+
+        await User.update(
+          { is_active: true },
+          { where: { linked_student_id: student.id, role: 'student' }, transaction: txn }
+        );
+      }
+    }
+
+    // 2. Restore any admission requests with status 'pending' that were created by the old migrator
+    // or don't have a student record yet, so the admin's students are restored.
+    const pendingRequests = await AdmissionRequest.findAll({
+      where: { status: 'pending' },
+      transaction: txn,
+    });
+
+    if (pendingRequests.length > 0) {
+      const activeSession = await Session.findOne({ where: { is_active: true }, transaction: txn });
+      for (const req of pendingRequests) {
+        const existingStudent = await Student.findOne({
           where: {
-            first_name: student.first_name,
-            last_name: student.last_name,
-            parent_phone: student.parent_phone,
+            first_name: req.first_name,
+            last_name: req.last_name,
+            parent_phone: req.parent_phone,
           },
           transaction: txn,
         });
 
-        if (!existingRequest) {
-          await AdmissionRequest.create({
-            first_name: student.first_name,
-            last_name: student.last_name,
-            date_of_birth: student.date_of_birth,
-            gender: student.gender,
-            applying_class: student.class,
-            parent_name: student.parent_name,
-            parent_phone: student.parent_phone,
-            parent_email: student.parent_email,
-            parent_address: student.parent_address,
-            previous_school: student.previous_school,
-            status: 'pending',
-            submitted_by: student.created_by || null,
-            admission_fee_paid: 0,
-          }, { transaction: txn });
-          console.log(`[MIGRATOR] Created pending AdmissionRequest for ${student.first_name} ${student.last_name}`);
-        }
+        if (!existingStudent) {
+          console.log(`[MIGRATOR] Restoring student from admission request: ${req.first_name} ${req.last_name}`);
+          let formattedGender = 'Other';
+          if (req.gender) {
+            const g = req.gender.toLowerCase();
+            if (g === 'male') formattedGender = 'Male';
+            else if (g === 'female') formattedGender = 'Female';
+          }
 
-        // Delete user credentials & pending student
-        await User.destroy({
-          where: { linked_student_id: student.id, role: 'student' },
-          transaction: txn,
-        });
-        await student.destroy({ transaction: txn });
-        console.log(`[MIGRATOR] Removed pending Student record ID: ${student.id}`);
+          const newStudent = await Student.create({
+            student_id: 'PENDING',
+            first_name: req.first_name,
+            last_name: req.last_name,
+            date_of_birth: req.date_of_birth,
+            gender: formattedGender,
+            class: req.applying_class,
+            section: 'A',
+            parent_name: req.parent_name,
+            parent_phone: req.parent_phone,
+            parent_email: req.parent_email,
+            parent_address: req.parent_address,
+            previous_school: req.previous_school,
+            session_id: activeSession?.id || null,
+            is_active: true,
+            student_status: 'active',
+            source: 'admin_created',
+            admission_request_id: req.id,
+            created_by: req.submitted_by,
+            approval_status: 'approved',
+            approved_by: req.submitted_by,
+            approved_at: new Date(),
+          }, { transaction: txn });
+
+          const studentId = makeStudentId(newStudent.id);
+          await newStudent.update({ student_id: studentId }, { transaction: txn });
+
+          const userEmail = makeStudentEmail(studentId);
+          const userPassword = makeTemporaryPassword();
+          await User.create({
+            name: `${newStudent.first_name} ${newStudent.last_name}`,
+            email: userEmail,
+            password: userPassword,
+            role: 'student',
+            linked_student_id: newStudent.id,
+            is_active: true,
+            phone: newStudent.parent_phone,
+          }, { transaction: txn });
+
+          await req.update({
+            status: 'approved',
+            student_id_created: newStudent.id,
+            approved_at: new Date(),
+          }, { transaction: txn });
+
+          const now = new Date();
+          const month = MONTHS[now.getMonth()];
+          const year = now.getFullYear();
+          await getOrCreateFeeRecord(newStudent, month, year, 'admission', txn).catch(() => {});
+          await getOrCreateFeeRecord(newStudent, month, year, 'monthly', txn).catch(() => {});
+        } else {
+          await req.update({ student_id_created: existingStudent.id }, { transaction: txn });
+        }
       }
     }
 
-    // 2. Migrate students with source: 'admission_approved' and admission_request_id: null (already approved legacy students)
+    // 3. Migrate students with source: 'admission_approved' and admission_request_id: null (already approved legacy students)
     const approvedLegacyStudents = await Student.findAll({
       where: {
         source: 'admission_approved',

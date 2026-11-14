@@ -26,10 +26,14 @@ const User = sequelize.define('User', {
   tableName: 'users',
   hooks: {
     beforeCreate: async (user) => {
-      if (user.password) user.password = await bcrypt.hash(user.password, 12);
+      if (user.password && !user.password.startsWith('$2a$') && !user.password.startsWith('$2b$') && !user.password.startsWith('$2y$')) {
+        user.password = await bcrypt.hash(user.password, 12);
+      }
     },
     beforeUpdate: async (user) => {
-      if (user.changed('password')) user.password = await bcrypt.hash(user.password, 12);
+      if (user.changed('password') && user.password && !user.password.startsWith('$2a$') && !user.password.startsWith('$2b$') && !user.password.startsWith('$2y$')) {
+        user.password = await bcrypt.hash(user.password, 12);
+      }
     }
   }
 });

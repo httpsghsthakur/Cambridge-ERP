@@ -4,8 +4,12 @@ import API from '../../utils/api';
 import { CLASSES, SECTIONS } from '../../constants/roles';
 
 export default function StudentForm({ onSubmit, defaultValues = {}, loading = false }) {
-  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm({ defaultValues });
-  useEffect(() => { reset(defaultValues); }, [JSON.stringify(defaultValues)]);
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm({ defaultValues });
+  const [photoPreview, setPhotoPreview] = useState(defaultValues?.profile_photo || null);
+  useEffect(() => { 
+    reset(defaultValues); 
+    setPhotoPreview(defaultValues?.profile_photo || null);
+  }, [JSON.stringify(defaultValues)]);
 
   const [feeStructures, setFeeStructures] = useState([]);
   useEffect(() => {
@@ -74,6 +78,63 @@ export default function StudentForm({ onSubmit, defaultValues = {}, loading = fa
         <div>
           <label className={l}>Date of Birth</label>
           <input type="date" {...register('date_of_birth')} className={f} />
+        </div>
+      </div>
+
+      {/* Student Passport Photo */}
+      <div>
+        <label className={l}>Student Photograph (Passport Size)</label>
+        <div className="flex items-center gap-3">
+          {photoPreview ? (
+            <img 
+              src={photoPreview} 
+              alt="Student Preview" 
+              className="w-12 h-14 object-cover rounded-lg border border-gray-300 shadow-sm bg-white" 
+            />
+          ) : (
+            <div className="w-12 h-14 rounded-lg border border-dashed border-gray-300 flex items-center justify-center bg-gray-50 text-gray-400 text-xs">
+              Photo
+            </div>
+          )}
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => {
+              const file = e.target.files[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                  const canvas = document.createElement('canvas');
+                  let width = img.width;
+                  let height = img.height;
+                  const MAX_SIZE = 240;
+                  if (width > height) {
+                    if (width > MAX_SIZE) {
+                      height = Math.round(height * (MAX_SIZE / width));
+                      width = MAX_SIZE;
+                    }
+                  } else {
+                    if (height > MAX_SIZE) {
+                      width = Math.round(width * (MAX_SIZE / height));
+                      height = MAX_SIZE;
+                    }
+                  }
+                  canvas.width = width;
+                  canvas.height = height;
+                  const ctx = canvas.getContext('2d');
+                  ctx.drawImage(img, 0, 0, width, height);
+                  const base64Str = canvas.toDataURL('image/jpeg', 0.85);
+                  setPhotoPreview(base64Str);
+                  setValue('profile_photo', base64Str);
+                };
+                img.src = event.target.result;
+              };
+              reader.readAsDataURL(file);
+            }}
+            className="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-colors"
+          />
         </div>
       </div>
 

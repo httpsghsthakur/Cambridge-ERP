@@ -1,4 +1,5 @@
 const path = require('path');
+const fs = require('fs');
 const express = require('express');
 const compression = require('compression');
 const cors = require('cors');
@@ -10,7 +11,9 @@ const cookieParser = require('cookie-parser');
 const hpp = require('hpp');
 
 // ── Load environment variables FIRST — before any other module reads process.env
-require('dotenv').config({ path: path.join(__dirname, '.env') });
+const dotenv = require('dotenv');
+dotenv.config({ path: path.join(__dirname, '.env') });
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 const { sequelize } = require('./models');
 const { protect, isSuperAdmin } = require('./middleware/auth');
@@ -19,8 +22,6 @@ const auditLogger = require('./middleware/auditLogger');
 const securityLogger = require('./middleware/securityLogger');
 
 const app = express();
-const port = parseInt(process.env.PORT, 10) || 5000;
-const host = process.env.HOST || '0.0.0.0';
 const isProd = process.env.NODE_ENV === 'production';
 
 // ── Global Process Error Handlers ─────────────────────────────────────────────
@@ -30,8 +31,10 @@ process.on('unhandledRejection', (reason, promise) => {
 
 process.on('uncaughtException', (err) => {
   console.error('[UNCAUGHT EXCEPTION]', err);
-  // Give the logger a moment to flush, then exit
-  setTimeout(() => process.exit(1), 1000);
+  // In production on shared hosting, do not immediately kill the process to prevent 503 flapping
+  if (!isProd) {
+    setTimeout(() => process.exit(1), 1000);
+  }
 });
 
 // Trust the first proxy hop (essential for rate limiting behind reverse proxies)
@@ -247,7 +250,34 @@ app.get('/api/seed-demo-data', async (req, res) => {
 // Any request that doesn't match an API route gets the React app's index.html,
 // allowing React Router to handle client-side routing.
 app.get('*', (req, res) => {
-  res.sendFile(path.join(clientBuildPath, 'index.html'));
+  const indexPath = path.join(clientBuildPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
+  return res.status(200).send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Cambridge ERP - Server Online</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #f8fafc; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+    .card { background: #1e293b; padding: 2rem 3rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; max-width: 520px; }
+    h1 { color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.5rem; }
+    p { color: #94a3b8; font-size: 0.95rem; line-height: 1.6; }
+    .badge { display: inline-block; background: #059669; color: #fff; padding: 0.25rem 0.75rem; border-radius: 9999px; font-weight: 600; font-size: 0.85rem; margin-bottom: 1rem; }
+    a { color: #38bdf8; text-decoration: none; font-weight: 500; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="badge">API Status: Running</div>
+    <h1>Cambridge School ERP</h1>
+    <p>The backend server is online and operational. The frontend build is being prepared.</p>
+    <p>Check API status: <a href="/api/health">/api/health</a> | Database: <a href="/api/db-check">/api/db-check</a></p>
+  </div>
+</body>
+</html>`);
 });
 
 // ── Dedicated Error Handler (L6, M10) ──────────────────────────────────────────
@@ -255,14 +285,16 @@ app.use(errorHandler);
 
 // ── Startup ───────────────────────────────────────────────────────────────────
 // Start listening immediately so the server stays online and Hostinger doesn't
-// return a 503. Database connection happens asynchronously in the background so
+// return a 503. Support numeric ports, Hostinger/cPanel sockets, and asynchronous DB init.
+const rawPort = process.env.PORT;
+const isSocket = rawPort && isNaN(Number(rawPort));
+const port = (!rawPort || isSocket) ? (rawPort || 5000) : parseInt(rawPort, 10);
+const host = process.env.HOST || '0.0.0.0';
 
-
-app.listen(port, host, () => {
+const onListening = () => {
   console.log('════════════════════════════════════════════════════════');
   console.log(`  School ERP Server started`);
-  console.log(`  Host     : ${host}`);
-  console.log(`  Port     : ${port}`);
+  console.log(`  Binding  : ${isSocket ? rawPort : `${host}:${port}`}`);
   console.log(`  NODE_ENV : ${process.env.NODE_ENV || 'not set'}`);
   console.log('════════════════════════════════════════════════════════');
 
@@ -379,6 +411,7 @@ app.listen(port, host, () => {
           `ALTER TABLE \`students\` ADD COLUMN \`approved_at\` DATETIME NULL;`,
           `ALTER TABLE \`students\` ADD COLUMN \`rejection_reason\` TEXT NULL;`,
           `ALTER TABLE \`students\` ADD COLUMN \`student_id\` VARCHAR(20) NULL;`,
+          `ALTER TABLE \`students\` ADD COLUMN \`profile_photo\` LONGTEXT NULL;`,
         ];
         for (const sql of alterQueries) {
           try { await sequelize.query(sql); } catch (e) {
@@ -459,4 +492,10 @@ app.listen(port, host, () => {
       dbStatus.error = err.message;
       dbStatus.checkedAt = new Date().toISOString();
     });
-});
+};
+
+if (isSocket) {
+  app.listen(rawPort, onListening);
+} else {
+  app.listen(port, host, onListening);
+}

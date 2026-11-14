@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const fs = require('fs');
-const sharp = require('sharp');
 const { protect } = require('../middleware/auth');
 const { uploadAvatar, validateImageMagicBytes } = require('../middleware/upload');
 const { User, Student, Teacher, Session } = require('../models');
@@ -108,19 +107,11 @@ router.post('/avatar', protect, (req, res) => {
         return res.status(404).json({ message: 'User not found.' });
       }
 
-      // Generate unique filename
-      const fileName = `avatar-${user.id}-${Date.now()}.webp`;
+      // Generate unique filename & save avatar
+      const ext = path.extname(req.file.originalname) || '.jpg';
+      const fileName = `avatar-${user.id}-${Date.now()}${ext}`;
       const targetPath = path.join(AVATAR_DIR, fileName);
-
-      // Auto-compress and resize using Sharp
-      await sharp(req.file.buffer)
-        .resize(200, 200, {
-          fit: 'cover',
-          position: 'center',
-        })
-        .toFormat('webp')
-        .webp({ quality: 80 })
-        .toFile(targetPath);
+      fs.writeFileSync(targetPath, req.file.buffer);
 
       // Path traversal defense: strictly sanitize old file basename
       if (user.profile_photo) {
