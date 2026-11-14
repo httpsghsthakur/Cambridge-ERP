@@ -49,12 +49,25 @@ router.get('/', protect, hasPermission('VIEW_STUDENTS'), async (req, res) => {
       page = 1, limit = 50,
     } = req.query;
 
-    const where = { is_active: true, approval_status: 'approved' };
+    const where = {};
     if (cls)            where.class          = cls;
     if (section)        where.section        = section;
     if (session_id)     where.session_id     = session_id;
     if (student_status) where.student_status = student_status;
     if (source)         where.source         = source;
+
+    if (['admin', 'admin2', 'superadmin', 'super_admin', 'fee_collector'].includes(req.user.role)) {
+      // For administrators & fee collectors: show all students (do not hide pending additions)
+      if (req.query.approval_status) {
+        where.approval_status = req.query.approval_status;
+      }
+      if (req.query.is_active !== undefined) {
+        where.is_active = req.query.is_active === 'true';
+      }
+    } else {
+      where.is_active = true;
+      where.approval_status = 'approved';
+    }
 
     if (req.user.role === 'teacher') {
       const allowedClasses = await getTeacherAllowedClasses(req.user.linked_teacher_id);
@@ -634,8 +647,8 @@ router.get('/:id', protect, hasPermission('VIEW_STUDENTS'), async (req, res) => 
 router.post('/', protect, authorize('admin', 'admin2', 'fee_collector'), validateStudentCreate, async (req, res) => {
   const txn = await require('../models').sequelize.transaction();
   try {
-    // Always create as pending for new admissions (per user request)
-    const isApproved = false;
+    // Admin/Admin2 creations are approved and activated immediately; fee collector creations require approval
+    const isApproved = ['admin', 'admin2', 'superadmin', 'super_admin'].includes(req.user.role);
     const safeData = pick(req.body, STUDENT_CREATE_FIELDS);
 
     // If custom email (User ID) is provided, verify it is not already taken
@@ -647,8 +660,18 @@ router.post('/', protect, authorize('admin', 'admin2', 'fee_collector'), validat
       }
     }
 
+    // Resolve active academic session if not provided
+    let sessionId = safeData.session_id;
+    if (!sessionId) {
+      const activeSession = await Session.findOne({ where: { is_active: true }, transaction: txn });
+      if (activeSession) {
+        sessionId = activeSession.id;
+      }
+    }
+
     const student = await Student.create({
       ...safeData,
+      session_id:     sessionId || null,
       student_id:     'PENDING',
       is_active:      isApproved,
       student_status: isApproved ? 'active' : 'inactive',
@@ -698,7 +721,9 @@ router.post('/', protect, authorize('admin', 'admin2', 'fee_collector'), validat
         password: safeData.password ? '[MANUALLY_SET]' : userPassword,
         active: isApproved,
       },
-      message: 'Student created pending admin approval or admission fee payment. Login will activate after approval.',
+      message: isApproved 
+        ? 'Student created and activated successfully.' 
+        : 'Student created pending admin approval or admission fee payment. Login will activate after approval.',
     });
   } catch (err) {
     console.error('[students][POST /]', err);
