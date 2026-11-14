@@ -11,7 +11,9 @@ const cookieParser = require('cookie-parser');
 const hpp = require('hpp');
 
 // ── Load environment variables FIRST — before any other module reads process.env
-require('dotenv').config({ path: path.join(__dirname, '.env') });
+const dotenv = require('dotenv');
+dotenv.config({ path: path.join(__dirname, '.env') });
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 const { sequelize } = require('./models');
 const { protect, isSuperAdmin } = require('./middleware/auth');
@@ -20,8 +22,6 @@ const auditLogger = require('./middleware/auditLogger');
 const securityLogger = require('./middleware/securityLogger');
 
 const app = express();
-const port = parseInt(process.env.PORT, 10) || 5000;
-const host = process.env.HOST || '0.0.0.0';
 const isProd = process.env.NODE_ENV === 'production';
 
 // ── Global Process Error Handlers ─────────────────────────────────────────────
@@ -31,8 +31,10 @@ process.on('unhandledRejection', (reason, promise) => {
 
 process.on('uncaughtException', (err) => {
   console.error('[UNCAUGHT EXCEPTION]', err);
-  // Give the logger a moment to flush, then exit
-  setTimeout(() => process.exit(1), 1000);
+  // In production on shared hosting, do not immediately kill the process to prevent 503 flapping
+  if (!isProd) {
+    setTimeout(() => process.exit(1), 1000);
+  }
 });
 
 // Trust the first proxy hop (essential for rate limiting behind reverse proxies)
@@ -284,14 +286,16 @@ app.use(errorHandler);
 
 // ── Startup ───────────────────────────────────────────────────────────────────
 // Start listening immediately so the server stays online and Hostinger doesn't
-// return a 503. Database connection happens asynchronously in the background so
+// return a 503. Support numeric ports, Hostinger/cPanel sockets, and asynchronous DB init.
+const rawPort = process.env.PORT;
+const isSocket = rawPort && isNaN(Number(rawPort));
+const port = (!rawPort || isSocket) ? (rawPort || 5000) : parseInt(rawPort, 10);
+const host = process.env.HOST || '0.0.0.0';
 
-
-app.listen(port, host, () => {
+const onListening = () => {
   console.log('════════════════════════════════════════════════════════');
   console.log(`  School ERP Server started`);
-  console.log(`  Host     : ${host}`);
-  console.log(`  Port     : ${port}`);
+  console.log(`  Binding  : ${isSocket ? rawPort : `${host}:${port}`}`);
   console.log(`  NODE_ENV : ${process.env.NODE_ENV || 'not set'}`);
   console.log('════════════════════════════════════════════════════════');
 
@@ -487,4 +491,10 @@ app.listen(port, host, () => {
       dbStatus.error = err.message;
       dbStatus.checkedAt = new Date().toISOString();
     });
-});
+};
+
+if (isSocket) {
+  app.listen(rawPort, onListening);
+} else {
+  app.listen(port, host, onListening);
+}
